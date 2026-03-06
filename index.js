@@ -50,84 +50,50 @@ E-mail: escoladeamorproprio@gmail.com
 Instagram: @escoladeamorproprio
 
 # VOCABULÁRIO — O QUE EVITAR
-NUNCA use: gostoso, delícia, ardente, sedutora, provocante, quente, sensual, irresistível, excitante, voluptuosa.
-NUNCA use "experimental" para se referir à aula. Use SEMPRE "aula avulsa".
+NUNCA use: gostoso, delícia, ardente, sedutora, provocante, quente, sensual, irresistível, excitante, voluptuosa, experimental.
 Tom acolhedor, feminino e empoderador — nunca sugestivo.
-Use: florescer, reconectar, despertar, essência, presença, leveza, cuidado, acolhimento, amor-próprio, potência feminina, consciência corporal.
+Use: florescer, reconectar, despertar, essência, presença, leveza, cuidado, acolhimento, amor-próprio, potência feminina.
 
-# VOCATIVOS — COMO TRATAR A PESSOA
-- Use o NOME da pessoa sempre que souber. Não use "querida" nem "linda" repetidamente.
-- Varie os vocativos: use o nome, ou simplesmente não use vocativo, ou use "você" naturalmente.
-- Máximo 1 vocativo afetivo por conversa (ex: "amor", "flor") — depois disso use o nome ou nada.
-- Nunca repita o mesmo vocativo duas vezes seguidas.
+# VOCATIVOS
+Use o NOME da pessoa sempre que souber. Varie — não repita "querida" ou "linda" mais de uma vez por conversa. Use o nome ou nada.
 
 # COMO SE COMUNICAR
-- Tom: acolhedor, feminino, íntimo. Nunca frio, nunca invasivo.
-- Emojis com moderação (🤍🦋🌸💜) — nunca em excesso.
-- Mensagens CURTAS — máximo 3 linhas. Nunca blocos longos.
-- Use **negrito** para chamadas para ação, preços e informações importantes.
-- Sempre conduza para um próximo passo claro ao final de cada mensagem.
+- Mensagens CURTAS — máximo 3 linhas.
+- Use negrito para preços e chamadas para ação.
+- Sempre conduza para um próximo passo claro.
 - Sempre direcione para algum serviço — nunca encerre sem indicar um caminho.
 
-# CAPTURA DE LEAD — QUANDO E COMO
-Só registre o lead DEPOIS de identificar o nome da pessoa E entender sua intenção/interesse.
-Não registre na primeira mensagem sem essas informações.
-Quando tiver nome + interesse, inclua ao final da resposta (invisível):
+# CAPTURA DE LEAD
+Só registre depois de identificar nome E intenção da pessoa.
+Inclua ao final da resposta (invisível para a usuária):
 [LEAD: nome=X | contato=Y | interesse=Z | status=CURIOSA ou AQUECIDA ou PRONTA]
 
-# DIRECIONAMENTO PARA AÇÃO
-Sempre direcione para um dos dois caminhos:
-1. **AULA AVULSA DE SÁBADO** — interesse em dança, bem-estar, experimentar presencialmente
-2. **EQUIPE HUMANA** — terapia, jurídico, aula particular, formação, curso online
-
 # AULA AVULSA DE SÁBADO — AGENDE E COBRE DIRETO
-Quando a pessoa demonstrar interesse:
-
-1. Pergunte com chamada em negrito:
-"*Você gostaria de agendar uma aula avulsa para esse próximo sábado?*
-*R$ 97* — e se decidir continuar, esse valor vira crédito na matrícula 🌸"
-
-2. Se confirmar, envie o PIX assim (exatamente nesse formato para gerar o card automático):
+Quando demonstrar interesse:
+1. "Ótimo! Vou reservar sua vaga para o sábado 🌸"
+2. Envie o PIX assim:
 
 Escola de Amor-Proprio Amor-Proprio
 CNPJ: 21.172.163/0001-21
 
 _Após o pagamento, envie o comprovante aqui para garantir sua vaga_ 🤍
 
-3. Aguarde o comprovante (imagem ou confirmação).
-4. Ao receber: "*Vaga confirmada! Te esperamos sábado* 🌸"
-5. OBRIGATÓRIO ao confirmar pagamento: inclua [PAGO] na resposta.
+3. Ao receber comprovante: "**Vaga confirmada! Te esperamos sábado** 🌸" + inclua [PAGO]
 
 # EQUIPE HUMANA
-Para terapia, jurídico, particular, formação ou curso online:
-"Nossa equipe cuida disso diretamente 🤍 *WhatsApp: (91) 98134-7134*"
+Para terapia, jurídico, particular, formação ou curso: "Nossa equipe vai te ajudar 🤍 **WhatsApp: (91) 98134-7134**"
 
 # SITUAÇÕES SENSÍVEIS
-DEPRESSÃO: Acolha com cuidado. A Escola complementa o tratamento médico. Nunca contradiga orientação médica.
-CORPO/AUTOESTIMA: Todos os corpos são bem-vindos. A dança do ventre celebra a mulher como ela é.
-SEM DINHEIRO: Aula avulsa *R$ 97*, parcelamento no cartão, plano semestral *R$ 250/mês*.
-É PSICÓLOGA?: Não é CRP, mas tem pós-graduação e quase 20 anos de experiência clínica com mulheres.
-
-# FLUXO DE ATENDIMENTO
-1. Acolha e pergunte o que trouxe a mulher.
-2. Ouça — só ofereça serviço depois de entender o que ela busca.
-3. Apresente o benefício, não o preço logo de cara.
-4. Faça a chamada para ação em **negrito**.
-5. Encerre com acolhimento, nunca com pressão.
+DEPRESSÃO: Acolha. A Escola complementa o tratamento médico.
+CORPO/AUTOESTIMA: Todos os corpos são bem-vindos.
+SEM DINHEIRO: Aula avulsa **R$ 97**, parcelamento, plano semestral **R$ 250/mês**.
+É PSICÓLOGA?: Não é CRP, mas quase 20 anos de experiência clínica.
 
 # OBJEÇÕES
-- "Caro": "*R$ 97* para uma aula avulsa — e esse valor vira crédito se decidir continuar 🌸"
-- "Pensar": "Sem pressa. *Posso reservar sua vaga enquanto você decide?* As vagas são limitadas."
-- "Sem tempo": "É só *1h30 de manhã no sábado* — um momento inteiramente seu 💜"
-- "Não sei se é pra mim": "Se você chegou até aqui, alguma parte de você já sabe. O que está sentindo?"
-
-# MELHORIAS AUTOMÁTICAS DE COMPORTAMENTO
-- Se a pessoa mandar mensagens fora de contexto (ex: "cadê o remédio", "cheguei na farmácia"), responda com leveza redirecionando para a Escola — não ignore, não force.
-- Se a pessoa parecer confusa, responda com simplicidade e gentileza.
-- Nunca repita a mesma estrutura de mensagem duas vezes seguidas — varie o formato.
-- Sempre que apresentar preço, use **negrito**.
-- Sempre que fizer chamada para ação, use **negrito**.
-
+- "Caro": "**R$ 97** para uma aula avulsa — e vira crédito se decidir continuar 🌸"
+- "Pensar": "Sem pressa. **Posso reservar sua vaga enquanto decide?**"
+- "Sem tempo": "É só **1h30 de manhã no sábado** — um momento só seu 💜"
+- "Não sei se é pra mim": "Se chegou até aqui, alguma parte de você já sabe. O que está sentindo?"
 `;
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -136,167 +102,149 @@ const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const LEADS_PASSWORD = process.env.LEADS_PASSWORD || "escola2024";
 
-const DB_LEADS = path.join("/tmp", "leads.json");
-const DB_LOGS = path.join("/tmp", "logs.json");
+const DB_LEADS = "/tmp/leads.json";
+const DB_LOGS = "/tmp/logs.json";
 
-function lerDB(arquivo) {
-  try { if (fs.existsSync(arquivo)) return JSON.parse(fs.readFileSync(arquivo, "utf8")); }
-  catch (e) {}
+function lerDB(a) {
+  try { if (fs.existsSync(a)) return JSON.parse(fs.readFileSync(a, "utf8")); } catch(e) {}
   return {};
 }
-
-function salvarDB(arquivo, dados) {
-  try { fs.writeFileSync(arquivo, JSON.stringify(dados, null, 2)); }
-  catch (e) { console.error("Erro salvar DB:", e.message); }
+function salvarDB(a, d) {
+  try { fs.writeFileSync(a, JSON.stringify(d, null, 2)); } catch(e) { console.error("DB erro:", e.message); }
 }
 
 let leadsDB = lerDB(DB_LEADS);
 let logsDB = lerDB(DB_LOGS);
 
 const rateLimits = {};
-function checarRateLimit(userId) {
-  const agora = Date.now();
-  if (!rateLimits[userId]) rateLimits[userId] = { count: 0, inicio: agora };
-  if (agora - rateLimits[userId].inicio > 60000) rateLimits[userId] = { count: 0, inicio: agora };
-  rateLimits[userId].count++;
-  if (rateLimits[userId].count > 10) return false;
-  return true;
+function checarRate(userId) {
+  const now = Date.now();
+  if (!rateLimits[userId]) rateLimits[userId] = { n: 0, t: now };
+  if (now - rateLimits[userId].t > 60000) rateLimits[userId] = { n: 0, t: now };
+  return ++rateLimits[userId].n <= 10;
 }
 
 const conversas = {};
-const retomadaTimers = {};
-
-function getConversa(userId) {
-  if (!conversas[userId]) conversas[userId] = [];
-  return conversas[userId];
+const timers = {};
+function getHist(id) { if (!conversas[id]) conversas[id] = []; return conversas[id]; }
+function addMsg(id, role, content) {
+  const h = getHist(id);
+  h.push({ role, content });
+  if (h.length > 30) h.splice(0, h.length - 30);
 }
 
-function addMensagem(userId, role, content) {
-  const hist = getConversa(userId);
-  hist.push({ role, content });
-  if (hist.length > 30) hist.splice(0, hist.length - 30);
-}
-
-function registrarLog(userId, role, texto, plataforma) {
+function log(userId, role, texto, plataforma) {
   if (!logsDB[userId]) logsDB[userId] = [];
   logsDB[userId].push({ role, texto, plataforma, timestamp: new Date().toISOString() });
-  if (logsDB[userId].length > 50) logsDB[userId].splice(0, logsDB[userId].length - 50);
+  if (logsDB[userId].length > 100) logsDB[userId].splice(0, logsDB[userId].length - 100);
   salvarDB(DB_LOGS, logsDB);
 }
 
-async function enviarMensagemTelegram(texto) {
+async function telegram(texto) {
   if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
   try {
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+    await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: texto, parse_mode: "Markdown" })
     });
-  } catch (e) { console.error("Erro Telegram:", e.message); }
+  } catch(e) { console.error("Telegram erro:", e.message); }
 }
 
-async function enviarFotoTelegram(imageUrl, caption) {
+async function telegramFoto(imageUrl, caption) {
   if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
   try {
-    const imgRes = await fetch(imageUrl, {
-      headers: { "Authorization": `Bearer ${process.env.WHATSAPP_TOKEN}` }
-    });
-    const buffer = Buffer.from(await imgRes.arrayBuffer());
-    const boundary = "Boundary" + Date.now();
+    const imgRes = await fetch(imageUrl, { headers: { "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN } });
+    const buf = Buffer.from(await imgRes.arrayBuffer());
+    const b = "B" + Date.now();
     const header = Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="chat_id"\r\n\r\n${TELEGRAM_CHAT_ID}\r\n` +
-      `--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\n${caption}\r\n` +
-      `--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="comprovante.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`
+      "--" + b + "\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n" + TELEGRAM_CHAT_ID + "\r\n" +
+      "--" + b + "\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n" + caption + "\r\n" +
+      "--" + b + "\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"comprovante.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n"
     );
-    const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
+    const footer = Buffer.from("\r\n--" + b + "--\r\n");
+    await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendPhoto", {
       method: "POST",
-      headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
-      body: Buffer.concat([header, buffer, footer])
+      headers: { "Content-Type": "multipart/form-data; boundary=" + b },
+      body: Buffer.concat([header, buf, footer])
     });
-    console.log("Comprovante enviado ao Telegram");
-  } catch (e) {
-    console.error("Erro foto Telegram:", e.message);
-    await enviarMensagemTelegram(caption + "\n\n_(imagem não pôde ser encaminhada)_");
+  } catch(e) {
+    console.error("Foto telegram erro:", e.message);
+    await telegram(caption + "\n\n_(imagem não encaminhada)_");
   }
 }
 
-async function alertaNovoLead(lead) {
-  await enviarMensagemTelegram(
-    `🌸 *NOVO CONTATO*\n\n` +
-    `👤 Nome: ${lead.nome || "Não informado"}\n` +
-    `📱 Telefone: ${lead.contato || "Não informado"}\n` +
-    `💜 Interesse: ${lead.interesse || "Não informado"}\n` +
-    `📲 Canal: ${lead.plataforma || "Desconhecido"}\n` +
-    `🕐 ${new Date().toLocaleString("pt-BR")}\n\n_Acompanhe!_ 💛`
+async function alertaNovo(lead) {
+  await telegram(
+    "🌸 *NOVO CONTATO*\n\n" +
+    "👤 Nome: " + (lead.nome || "Não informado") + "\n" +
+    "📱 Telefone: " + (lead.contato || "Não informado") + "\n" +
+    "💜 Interesse: " + (lead.interesse || "Não informado") + "\n" +
+    "📲 Canal: " + (lead.plataforma || "Desconhecido") + "\n" +
+    "🕐 " + new Date().toLocaleString("pt-BR") + "\n\n_Acompanhe!_ 💛"
   );
 }
 
-async function alertaLeadPronto(lead) {
-  await enviarMensagemTelegram(
-    `🔥 *LEAD PRONTO PARA FECHAR!*\n\n` +
-    `👤 Nome: ${lead.nome || "Não informado"}\n` +
-    `📱 Telefone: ${lead.contato || "Não informado"}\n` +
-    `💜 Interesse: ${lead.interesse || "Não informado"}\n` +
-    `🕐 ${new Date().toLocaleString("pt-BR")}\n\n_Entre em contato agora!_ 🚀`
+async function alertaPronto(lead) {
+  await telegram(
+    "🔥 *LEAD PRONTA PARA FECHAR!*\n\n" +
+    "👤 " + (lead.nome || "Não informado") + "\n" +
+    "📱 " + (lead.contato || "Não informado") + "\n" +
+    "💜 " + (lead.interesse || "Não informado") + "\n" +
+    "🕐 " + new Date().toLocaleString("pt-BR") + "\n\n_Entre em contato agora!_ 🚀"
   );
 }
 
-async function alertaPagamento(lead) {
-  await enviarMensagemTelegram(
-    `💰 *PAGAMENTO CONFIRMADO!* 🎉\n\n` +
-    `👤 Nome: ${lead.nome || "Não informado"}\n` +
-    `📱 Telefone: ${lead.contato || "Não informado"}\n` +
-    `💜 Serviço: Aula de Sábado — R$ 97,00\n` +
-    `🕐 ${new Date().toLocaleString("pt-BR")}\n\n✅ _Vaga confirmada pela Ana!_`
+async function alertaPago(lead) {
+  await telegram(
+    "💰 *PAGAMENTO CONFIRMADO!* 🎉\n\n" +
+    "👤 " + (lead.nome || "Não informado") + "\n" +
+    "📱 " + (lead.contato || "Não informado") + "\n" +
+    "💜 Aula de Sábado — R$ 97,00\n" +
+    "🕐 " + new Date().toLocaleString("pt-BR") + "\n\n✅ _Vaga confirmada pela Ana!_"
   );
 }
 
 async function processarImagem(userId, imageId) {
   try {
-    const mediaRes = await fetch(`https://graph.facebook.com/v18.0/${imageId}`, {
-      headers: { "Authorization": `Bearer ${process.env.WHATSAPP_TOKEN}` }
+    const r = await fetch("https://graph.facebook.com/v18.0/" + imageId, {
+      headers: { "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN }
     });
-    const mediaData = await mediaRes.json();
-
+    const d = await r.json();
     const lead = leadsDB[userId] || {};
     const caption =
-      `📎 *COMPROVANTE RECEBIDO*\n\n` +
-      `👤 ${lead.nome || "Não identificado"}\n` +
-      `📱 ${lead.contato || userId}\n` +
-      `💜 ${lead.interesse || "Aula de Sábado"}\n` +
-      `🕐 ${new Date().toLocaleString("pt-BR")}\n\n_Verifique e confirme a vaga!_ 🌸`;
-
-    await enviarFotoTelegram(mediaData.url, caption);
-
+      "📎 *COMPROVANTE RECEBIDO*\n\n" +
+      "👤 " + (lead.nome || "Não identificado") + "\n" +
+      "📱 " + (lead.contato || userId) + "\n" +
+      "💜 " + (lead.interesse || "Aula de Sábado") + "\n" +
+      "🕐 " + new Date().toLocaleString("pt-BR") + "\n\n_Verifique e confirme a vaga!_ 🌸";
+    await telegramFoto(d.url, caption);
     if (leadsDB[userId]) {
       leadsDB[userId].status = "COMPROVANTE_ENVIADO";
       leadsDB[userId].comprovante = new Date().toISOString();
       salvarDB(DB_LEADS, leadsDB);
     }
-
-    return "Recebi seu comprovante! ✅ Vaga confirmada para o sábado 🌸 Te esperamos! Qualquer dúvida sobre endereço ou horário, é só falar 💜";
-  } catch (e) {
-    console.error("Erro comprovante:", e.message);
+    return "Recebi seu comprovante! ✅ **Vaga confirmada para o sábado** 🌸 Te esperamos! Qualquer dúvida sobre endereço ou horário, é só falar 💜";
+  } catch(e) {
+    console.error("Comprovante erro:", e.message);
     return "Recebi sua imagem 🤍 Vou confirmar com a equipe e retorno em breve!";
   }
 }
 
-async function chamarIA(userId, mensagemUsuario, plataforma = "desconhecida") {
-  registrarLog(userId, "user", mensagemUsuario, plataforma);
-  addMensagem(userId, "user", mensagemUsuario);
+async function chamarIA(userId, msg, plataforma) {
+  log(userId, "user", msg, plataforma);
+  addMsg(userId, "user", msg);
 
   if (!leadsDB[userId]) {
     leadsDB[userId] = { userId, contato: userId, plataforma, status: "CURIOSA", timestamp: new Date().toISOString() };
     salvarDB(DB_LEADS, leadsDB);
-    await alertaNovoLead(leadsDB[userId]);
+    await alertaNovo(leadsDB[userId]);
     console.log("Novo lead:", userId);
   }
 
   let resposta = "Desculpe, tive um problema técnico. Tente novamente em instantes 🌸";
-
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -306,60 +254,60 @@ async function chamarIA(userId, mensagemUsuario, plataforma = "desconhecida") {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
-        system: `Você é ${IA_NOME}, atendente virtual com tom ${IA_TOM}.\n${IA_INSTRUCOES}`,
-        messages: getConversa(userId)
+        system: "Você é " + IA_NOME + ", atendente virtual com tom " + IA_TOM + ".\n" + IA_INSTRUCOES,
+        messages: getHist(userId)
       })
     });
-
-    if (!response.ok) {
-      console.error("Erro Anthropic:", await response.json());
+    if (res.ok) {
+      const d = await res.json();
+      resposta = d.content?.[0]?.text || resposta;
     } else {
-      const data = await response.json();
-      resposta = data.content?.[0]?.text || resposta;
+      console.error("Anthropic erro:", await res.json());
     }
-  } catch (e) { console.error("Erro IA:", e.message); }
+  } catch(e) { console.error("IA erro:", e.message); }
 
   if (resposta.includes("[PAGO]")) {
     resposta = resposta.replace("[PAGO]", "").trim();
     leadsDB[userId].status = "PAGO";
     leadsDB[userId].pagamento = new Date().toISOString();
     salvarDB(DB_LEADS, leadsDB);
-    await alertaPagamento(leadsDB[userId]);
+    await alertaPago(leadsDB[userId]);
   }
 
-  const leadMatch = resposta.match(/\[LEAD:\s*([^\]]+)\]/i);
-  if (leadMatch) {
+  const m = resposta.match(/\[LEAD:\s*([^\]]+)\]/i);
+  if (m) {
     try {
       const extras = {};
-      leadMatch[1].split("|").forEach(part => {
-        const [k, v] = part.split("=").map(s => s.trim());
+      m[1].split("|").forEach(p => {
+        const [k, v] = p.split("=").map(s => s.trim());
         if (k && v) extras[k.toLowerCase()] = v;
       });
       const statusAnterior = leadsDB[userId]?.status;
       leadsDB[userId] = { ...leadsDB[userId], ...extras, contato: leadsDB[userId]?.contato || userId, userId };
       salvarDB(DB_LEADS, leadsDB);
       if (extras.status === "PRONTA" && statusAnterior !== "PRONTA" && statusAnterior !== "PAGO") {
-        await alertaLeadPronto(leadsDB[userId]);
+        await alertaPronto(leadsDB[userId]);
       }
-    } catch (e) { console.error("Erro lead:", e.message); }
-    resposta = resposta.replace(leadMatch[0], "").trim();
+    } catch(e) { console.error("Lead erro:", e.message); }
+    resposta = resposta.replace(m[0], "").trim();
   }
 
-  registrarLog(userId, "assistant", resposta, plataforma);
-  addMensagem(userId, "assistant", resposta);
+  log(userId, "assistant", resposta, plataforma);
+  addMsg(userId, "assistant", resposta);
   return resposta;
 }
 
 function agendarRetomada(userId, sendFn) {
-  if (retomadaTimers[userId]) clearTimeout(retomadaTimers[userId]);
-  retomadaTimers[userId] = setTimeout(async () => {
+  if (timers[userId]) clearTimeout(timers[userId]);
+  timers[userId] = setTimeout(async () => {
     if (leadsDB[userId]) {
       try { await sendFn("Ainda estou aqui, caso queira continuar 🌸 Sem pressa."); }
-      catch (e) { console.error("Erro retomada:", e.message); }
+      catch(e) { console.error("Retomada erro:", e.message); }
     }
   }, 10 * 60 * 1000);
 }
 
+// WHATSAPP
 app.get("/webhook/whatsapp", (req, res) => {
   if (req.query["hub.verify_token"] === VERIFY_TOKEN) res.send(req.query["hub.challenge"]);
   else res.sendStatus(403);
@@ -367,91 +315,87 @@ app.get("/webhook/whatsapp", (req, res) => {
 
 app.post("/webhook/whatsapp", async (req, res) => {
   try {
-    const entry = req.body.entry?.[0];
-    const changes = entry?.changes?.[0];
-    const msg = changes?.value?.messages?.[0];
+    const msg = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    const phoneNumberId = req.body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
     if (!msg) return res.sendStatus(200);
-
     const userId = msg.from;
-    const phoneNumberId = changes.value.metadata.phone_number_id;
-    if (!checarRateLimit(userId)) return res.sendStatus(200);
+    if (!checarRate(userId)) return res.sendStatus(200);
 
-    const sendFn = async (text) => {
-      const r = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+    const send = async (text) => {
+      const r = await fetch("https://graph.facebook.com/v18.0/" + phoneNumberId + "/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.WHATSAPP_TOKEN}` },
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN },
         body: JSON.stringify({ messaging_product: "whatsapp", to: userId, text: { body: text } })
       });
-      const json = await r.json();
-      if (r.status !== 200) console.error("[WA] Erro:", JSON.stringify(json));
+      if (!r.ok) console.error("WA send erro:", await r.json());
     };
 
     if (msg.type === "image") {
-      const resposta = await processarImagem(userId, msg.image.id);
-      await sendFn(resposta);
+      await send(await processarImagem(userId, msg.image.id));
       return res.sendStatus(200);
     }
-
     if (msg.type !== "text") return res.sendStatus(200);
 
-    const resposta = await chamarIA(userId, msg.text.body, "whatsapp");
-    await sendFn(resposta);
-    agendarRetomada(userId, sendFn);
+    await send(await chamarIA(userId, msg.text.body, "whatsapp"));
+    agendarRetomada(userId, send);
     res.sendStatus(200);
-  } catch (err) { console.error("Erro WhatsApp:", err); res.sendStatus(500); }
+  } catch(e) { console.error("WA erro:", e); res.sendStatus(500); }
 });
 
+// INSTAGRAM
 app.get("/webhook/instagram", (req, res) => {
   if (req.query["hub.verify_token"] === VERIFY_TOKEN) res.send(req.query["hub.challenge"]);
   else res.sendStatus(403);
 });
-
 app.post("/webhook/instagram", async (req, res) => {
   try {
     const messaging = req.body.entry?.[0]?.messaging?.[0];
     if (!messaging?.message?.text) return res.sendStatus(200);
     const userId = messaging.sender.id;
-    if (!checarRateLimit(userId)) return res.sendStatus(200);
-    const sendFn = async (text) => {
-      await fetch(`https://graph.facebook.com/v18.0/me/messages`, {
+    if (!checarRate(userId)) return res.sendStatus(200);
+    const send = async (text) => {
+      await fetch("https://graph.facebook.com/v18.0/me/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.INSTAGRAM_TOKEN}` },
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.INSTAGRAM_TOKEN },
         body: JSON.stringify({ recipient: { id: userId }, message: { text } })
       });
     };
-    const resposta = await chamarIA(userId, messaging.message.text, "instagram");
-    await sendFn(resposta);
-    agendarRetomada(userId, sendFn);
+    await send(await chamarIA(userId, messaging.message.text, "instagram"));
+    agendarRetomada(userId, send);
     res.sendStatus(200);
-  } catch (err) { console.error("Erro Instagram:", err); res.sendStatus(500); }
+  } catch(e) { console.error("IG erro:", e); res.sendStatus(500); }
 });
 
+// FACEBOOK
 app.get("/webhook/facebook", (req, res) => {
   if (req.query["hub.verify_token"] === VERIFY_TOKEN) res.send(req.query["hub.challenge"]);
   else res.sendStatus(403);
 });
-
 app.post("/webhook/facebook", async (req, res) => {
   try {
     const messaging = req.body.entry?.[0]?.messaging?.[0];
     if (!messaging?.message?.text) return res.sendStatus(200);
     const userId = messaging.sender.id;
-    if (!checarRateLimit(userId)) return res.sendStatus(200);
-    const sendFn = async (text) => {
-      await fetch(`https://graph.facebook.com/v18.0/me/messages`, {
+    if (!checarRate(userId)) return res.sendStatus(200);
+    const send = async (text) => {
+      await fetch("https://graph.facebook.com/v18.0/me/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.FACEBOOK_TOKEN}` },
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.FACEBOOK_TOKEN },
         body: JSON.stringify({ recipient: { id: userId }, message: { text } })
       });
     };
-    const resposta = await chamarIA(userId, messaging.message.text, "facebook");
-    await sendFn(resposta);
-    agendarRetomada(userId, sendFn);
+    await send(await chamarIA(userId, messaging.message.text, "facebook"));
+    agendarRetomada(userId, send);
     res.sendStatus(200);
-  } catch (err) { console.error("Erro Facebook:", err); res.sendStatus(500); }
+  } catch(e) { console.error("FB erro:", e); res.sendStatus(500); }
 });
 
+// PAINEL
+app.get("/painel", (req, res) => {
+  res.sendFile(path.join(__dirname, "painel.html"));
+});
 
+// LEADS
 app.get("/leads", (req, res) => {
   if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta." });
   leadsDB = lerDB(DB_LEADS);
@@ -459,6 +403,7 @@ app.get("/leads", (req, res) => {
   res.json({ total: lista.length, leads: lista });
 });
 
+// LOGS
 app.get("/logs", (req, res) => {
   if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta." });
   logsDB = lerDB(DB_LOGS);
@@ -469,9 +414,10 @@ app.get("/logs", (req, res) => {
   res.json({ totalUsuarios: resumo.length, usuarios: resumo });
 });
 
+// STATUS
 app.get("/", (req, res) => {
-  res.json({ status: "Ana no ar ✅", escola: "Escola de Amor-Próprio", leads: Object.keys(leadsDB).length, conversasAtivas: Object.keys(conversas).length });
+  res.json({ status: "Ana no ar ✅", escola: "Escola de Amor-Próprio", leads: Object.keys(leadsDB).length, conversas: Object.keys(conversas).length });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Ana rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log("✅ Ana rodando na porta " + PORT));
