@@ -363,7 +363,8 @@ app.post("/webhook/whatsapp", async (req, res) => {
     if (!checarRateLimit(userId)) return res.sendStatus(200);
 
     const sendFn = async (text) => {
-      await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+      console.log(`[WA] Enviando para ${userId} via phoneNumberId ${phoneNumberId}`);
+      const r = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -375,9 +376,12 @@ app.post("/webhook/whatsapp", async (req, res) => {
           text: { body: text }
         })
       });
+      const json = await r.json();
+      console.log(`[WA] Resposta Meta status=${r.status}:`, JSON.stringify(json));
     };
 
     const resposta = await chamarIA(userId, texto, "whatsapp");
+    console.log(`[WA] IA respondeu: ${resposta.substring(0, 80)}...`);
     await sendFn(resposta);
     agendarRetomada(userId, sendFn);
     res.sendStatus(200);
