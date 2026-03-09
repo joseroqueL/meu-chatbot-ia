@@ -164,11 +164,13 @@ async function conectarMongo() {
   if (db) return;
   try {
     console.log("🔄 Conectando MongoDB...");
-    const uri = MONGODB_URI + (MONGODB_URI.includes("?") ? "&" : "?") + "tls=true&tlsInsecure=false";
-    const client = new MongoClient(uri, {
+    const client = new MongoClient(MONGODB_URI, {
       serverSelectionTimeoutMS: 15000,
       connectTimeoutMS: 15000,
       socketTimeoutMS: 15000,
+      tls: true,
+      tlsAllowInvalidCertificates: true,
+      tlsAllowInvalidHostnames: true,
     });
     await client.connect();
     // Testa a conexão
