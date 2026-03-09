@@ -163,7 +163,11 @@ let logsCol = null;
 async function conectarMongo() {
   if (db) return;
   try {
-    const client = new MongoClient(MONGODB_URI);
+    const client = new MongoClient(MONGODB_URI, {
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+      serverSelectionTimeoutMS: 10000,
+    });
     await client.connect();
     db = client.db("escolabot");
     leadsCol = db.collection("leads");
