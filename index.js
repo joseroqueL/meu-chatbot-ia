@@ -1,6 +1,6 @@
 const express = require("express");
 const fs = require("fs");
-const path = require("path");
+const { MongoClient } = require("mongodb");
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 
@@ -150,29 +150,85 @@ MENSAGENS FORA DE CONTEXTO: Responda com leveza redirecionando para a Escola —
 5. Nunca encerre sem um próximo passo claro
 `;
 
+// ============ CONFIG ============
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "meu_token_secreto";
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const LEADS_PASSWORD = process.env.LEADS_PASSWORD || "escola2024";
 const PAINEL_SENHA = process.env.PAINEL_SENHA || "painel2024";
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// DB em /tmp — persiste entre requisições mas reseta no deploy
-const DB_LEADS = "/tmp/leads.json";
-const DB_LOGS = "/tmp/logs.json";
+// ============ MONGODB ============
+let db = null;
+let leadsCol = null;
+let logsCol = null;
 
-function lerDB(a) {
-  try { if (fs.existsSync(a)) return JSON.parse(fs.readFileSync(a, "utf8")); } catch(e) {}
-  return {};
+async function conectarMongo() {
+  if (db) return;
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    db = client.db("escolabot");
+    leadsCol = db.collection("leads");
+    logsCol = db.collection("logs");
+    // Índices para busca rápida
+    await leadsCol.createIndex({ userId: 1 }, { unique: true });
+    await logsCol.createIndex({ userId: 1 });
+    console.log("✅ MongoDB conectado");
+  } catch(e) {
+    console.error("❌ MongoDB erro:", e.message);
+  }
 }
-function salvarDB(a, d) {
-  try { fs.writeFileSync(a, JSON.stringify(d, null, 2)); } catch(e) { console.error("DB erro:", e.message); }
+
+async function getLead(userId) {
+  try { return await leadsCol.findOne({ userId }); } catch(e) { return null; }
 }
 
-let leadsDB = lerDB(DB_LEADS);
-let logsDB = lerDB(DB_LOGS);
+async function saveLead(lead) {
+  try {
+    await leadsCol.updateOne(
+      { userId: lead.userId },
+      { $set: lead },
+      { upsert: true }
+    );
+  } catch(e) { console.error("saveLead erro:", e.message); }
+}
 
-// Rate limit: max 10 msgs/min por usuário
+async function getLogs(userId) {
+  try {
+    const doc = await logsCol.findOne({ userId });
+    return doc ? doc.msgs : [];
+  } catch(e) { return []; }
+}
+
+async function addLog(userId, role, texto, plataforma) {
+  try {
+    const entry = { role, texto, plataforma, timestamp: new Date().toISOString() };
+    await logsCol.updateOne(
+      { userId },
+      { $push: { msgs: { $each: [entry], $slice: -100 } } },
+      { upsert: true }
+    );
+  } catch(e) { console.error("addLog erro:", e.message); }
+}
+
+async function getAllLeads() {
+  try { return await leadsCol.find({}).sort({ timestamp: -1 }).toArray(); } catch(e) { return []; }
+}
+
+async function getAllLogsResumo() {
+  try {
+    const docs = await logsCol.find({}, { projection: { userId: 1, msgs: { $slice: -1 } } }).toArray();
+    return docs.map(d => ({
+      userId: d.userId,
+      totalMensagens: d.msgs ? d.msgs.length : 0,
+      ultima: d.msgs && d.msgs.length > 0 ? d.msgs[d.msgs.length - 1].timestamp : null
+    }));
+  } catch(e) { return []; }
+}
+
+// ============ RATE LIMIT ============
 const rateLimits = {};
 function checarRate(userId) {
   const now = Date.now();
@@ -181,25 +237,14 @@ function checarRate(userId) {
   return ++rateLimits[userId].n <= 10;
 }
 
-// Histórico de conversa por usuário (max 30 msgs)
+// ============ HISTÓRICO EM MEMÓRIA (conversas ativas) ============
 const conversas = {};
-// Timers de retomada
 const timers = {};
-// Controle de primeira mensagem
-const primeiroContato = {};
-
 function getHist(id) { if (!conversas[id]) conversas[id] = []; return conversas[id]; }
 function addMsg(id, role, content) {
   const h = getHist(id);
   h.push({ role, content });
   if (h.length > 30) h.splice(0, h.length - 30);
-}
-
-function log(userId, role, texto, plataforma) {
-  if (!logsDB[userId]) logsDB[userId] = [];
-  logsDB[userId].push({ role, texto, plataforma, timestamp: new Date().toISOString() });
-  if (logsDB[userId].length > 100) logsDB[userId].splice(0, logsDB[userId].length - 100);
-  salvarDB(DB_LOGS, logsDB);
 }
 
 // ============ TELEGRAM ============
@@ -274,7 +319,7 @@ async function processarImagem(userId, imageId) {
       headers: { "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN }
     });
     const d = await r.json();
-    const lead = leadsDB[userId] || {};
+    const lead = await getLead(userId) || {};
     const caption =
       "📎 *COMPROVANTE RECEBIDO*\n\n" +
       "👤 " + (lead.nome || "Não identificado") + "\n" +
@@ -282,12 +327,8 @@ async function processarImagem(userId, imageId) {
       "💜 " + (lead.interesse || "Aula de Sábado") + "\n" +
       "🕐 " + new Date().toLocaleString("pt-BR") + "\n\n_Verifique e confirme a vaga!_ 🌸";
     await telegramFoto(d.url, caption);
-    if (leadsDB[userId]) {
-      leadsDB[userId].status = "COMPROVANTE_ENVIADO";
-      leadsDB[userId].comprovante = new Date().toISOString();
-      salvarDB(DB_LEADS, leadsDB);
-    }
-    await alertaPago(leadsDB[userId] || { contato: userId });
+    await saveLead({ ...lead, userId, status: "COMPROVANTE_ENVIADO", comprovante: new Date().toISOString() });
+    await alertaPago(lead);
     return "Recebi seu comprovante! ✅\n\n*Vaga confirmada para o sábado* 🌸\n\n_Te esperamos! Qualquer dúvida sobre o endereço ou horário, é só falar_ 💜";
   } catch(e) {
     console.error("Comprovante erro:", e.message);
@@ -297,15 +338,14 @@ async function processarImagem(userId, imageId) {
 
 // ============ IA ============
 async function chamarIA(userId, msg, plataforma) {
-  log(userId, "user", msg, plataforma);
+  await addLog(userId, "user", msg, plataforma);
   addMsg(userId, "user", msg);
 
-  // Primeiro contato: registra lead e dispara alerta
-  const isPrimeiro = !leadsDB[userId];
-  if (isPrimeiro) {
-    leadsDB[userId] = { userId, contato: userId, plataforma, status: "CURIOSA", timestamp: new Date().toISOString() };
-    salvarDB(DB_LEADS, leadsDB);
-    await alertaNovo(leadsDB[userId]);
+  let lead = await getLead(userId);
+  if (!lead) {
+    lead = { userId, contato: userId, plataforma, status: "CURIOSA", timestamp: new Date().toISOString() };
+    await saveLead(lead);
+    await alertaNovo(lead);
     console.log("Novo lead:", userId);
   }
 
@@ -333,18 +373,12 @@ async function chamarIA(userId, msg, plataforma) {
     }
   } catch(e) { console.error("IA erro:", e.message); }
 
-  // Detecta pagamento confirmado
   if (resposta.includes("[PAGO]")) {
     resposta = resposta.replace("[PAGO]", "").trim();
-    if (leadsDB[userId]) {
-      leadsDB[userId].status = "PAGO";
-      leadsDB[userId].pagamento = new Date().toISOString();
-      salvarDB(DB_LEADS, leadsDB);
-      await alertaPago(leadsDB[userId]);
-    }
+    await saveLead({ ...lead, status: "PAGO", pagamento: new Date().toISOString() });
+    await alertaPago(lead);
   }
 
-  // Extrai dados do lead
   const m = resposta.match(/\[LEAD:\s*([^\]]+)\]/i);
   if (m) {
     try {
@@ -353,27 +387,26 @@ async function chamarIA(userId, msg, plataforma) {
         const [k, v] = p.split("=").map(s => s.trim());
         if (k && v) extras[k.toLowerCase()] = v;
       });
-      const statusAnterior = leadsDB[userId]?.status;
-      leadsDB[userId] = { ...leadsDB[userId], ...extras, contato: leadsDB[userId]?.contato || userId, userId };
-      salvarDB(DB_LEADS, leadsDB);
-      // Alerta só quando vira PRONTA pela primeira vez
+      const statusAnterior = lead.status;
+      const novoLead = { ...lead, ...extras, contato: lead.contato || userId, userId };
+      await saveLead(novoLead);
       if (extras.status === "PRONTA" && statusAnterior !== "PRONTA" && statusAnterior !== "PAGO") {
-        await alertaLeadAtualizado(leadsDB[userId]);
+        await alertaLeadAtualizado(novoLead);
       }
     } catch(e) { console.error("Lead erro:", e.message); }
     resposta = resposta.replace(m[0], "").trim();
   }
 
-  log(userId, "assistant", resposta, plataforma);
+  await addLog(userId, "assistant", resposta, plataforma);
   addMsg(userId, "assistant", resposta);
   return resposta;
 }
 
-// Retomada: 10min sem resposta — só dispara se não houve mensagem nova
 function agendarRetomada(userId, sendFn) {
   if (timers[userId]) clearTimeout(timers[userId]);
   timers[userId] = setTimeout(async () => {
-    if (leadsDB[userId] && leadsDB[userId].status !== "PAGO") {
+    const lead = await getLead(userId);
+    if (lead && lead.status !== "PAGO") {
       try { await sendFn("Ainda estou aqui, caso queira continuar 🌸 Sem pressa."); }
       catch(e) { console.error("Retomada erro:", e.message); }
     }
@@ -391,7 +424,6 @@ app.post("/webhook/whatsapp", async (req, res) => {
     const value = req.body.entry?.[0]?.changes?.[0]?.value;
     const msg = value?.messages?.[0];
     const phoneNumberId = value?.metadata?.phone_number_id;
-    // Ignora notificações de status (lido, entregue, etc)
     if (!msg || value?.statuses) return res.sendStatus(200);
     const userId = msg.from;
     if (!checarRate(userId)) return res.sendStatus(200);
@@ -463,10 +495,10 @@ app.post("/webhook/facebook", async (req, res) => {
   } catch(e) { console.error("FB erro:", e); res.sendStatus(500); }
 });
 
-// ============ PAINEL ADMIN (com senha) ============
+// ============ PAINEL ============
 app.get("/painel", (req, res) => {
   if (req.query.senha !== PAINEL_SENHA) {
-    return res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel Ana</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:#fdf6f0;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{background:white;border-radius:16px;padding:48px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);max-width:360px;width:90%}h1{font-family:'Playfair Display',serif;color:#8a3f52;margin-bottom:8px;font-size:22px}p{color:#7a6570;font-size:14px;margin-bottom:24px}input{width:100%;padding:12px 16px;border:1px solid #f0d5dc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:12px}button{width:100%;padding:12px;background:#c9748a;color:white;border:none;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer}button:hover{background:#8a3f52}</style></head><body><div class="box"><h1>Painel Ana 🌸</h1><p>Escola de Amor-Próprio</p><input type="password" id="s" placeholder="Senha de acesso" onkeydown="if(event.key==='Enter')entrar()"><button onclick="entrar()">Entrar</button></div><script>function entrar(){const s=document.getElementById('s').value;if(s)window.location.href='/painel?senha='+encodeURIComponent(s);}</script></body></html>`);
+    return res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel Ana</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:#fdf6f0;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{background:white;border-radius:16px;padding:48px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);max-width:360px;width:90%}h1{font-family:'Playfair Display',serif;color:#8a3f52;margin-bottom:8px;font-size:22px}p{color:#7a6570;font-size:14px;margin-bottom:24px}input{width:100%;padding:12px 16px;border:1px solid #f0d5dc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:12px}button{width:100%;padding:12px;background:#c9748a;color:white;border:none;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer}button:hover{background:#8a3f52}</style></head><body><div class="box"><h1>Painel Ana 🌸</h1><p>Escola de Amor-Próprio</p><input type="password" id="s" placeholder="Senha de acesso" onkeydown="if(event.key==='Enter')entrar()"><button onclick="entrar()">Entrar</button></div><script>function entrar(){const s=document.getElementById('s').value;if(s)window.location.href='/painel?senha='+encodeURIComponent(s);}<\/script></body></html>`);
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   const painelHtml = `<!DOCTYPE html>
@@ -563,11 +595,11 @@ header{background:var(--dark);padding:16px 28px;display:flex;align-items:center;
   <div class="chat-area">
     <div id="ch" class="chat-header" style="display:none">
       <div class="av" id="av">A</div>
-      <div class="ci2"><div class="cn2" id="cn">-</div><div class="cp2" id="cph">-</div></div>
+      <div class="ci2"><div class="cn2" id="cnm">-</div><div class="cp2" id="cph">-</div></div>
       <div class="tags">
-        <span class="tag tag-i" id="ci"></span>
-        <span class="tag tag-c" id="cc"></span>
-        <span class="sb" id="cs"></span>
+        <span class="tag tag-i" id="cint"></span>
+        <span class="tag tag-c" id="ccan"></span>
+        <span class="sb" id="cst"></span>
       </div>
     </div>
     <div id="ma" class="messages">
@@ -586,7 +618,7 @@ const BASE="https://meu-chatbot-ia-production.up.railway.app";
 const SENHA="${LEADS_PASSWORD}";
 let leads=[],logs={},filtro="todos",ativo=null;
 function ftel(n){if(!n)return"-";const d=n.replace(/\\D/g,"");if(d.length===13)return"+"+d.slice(0,2)+" ("+d.slice(2,4)+") "+d.slice(4,9)+"-"+d.slice(9);if(d.length===12)return"+"+d.slice(0,2)+" ("+d.slice(2,4)+") "+d.slice(4,8)+"-"+d.slice(8);return n;}
-function fhora(t){if(!t)return"";const d=new Date(t);return d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
+function fhora(t){if(!t)return"";return new Date(t).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
 function ini(n){if(!n||n==="Não informado")return"?";return n.trim()[0].toUpperCase();}
 async function carregar(){
   try{
@@ -596,7 +628,7 @@ async function carregar(){
     (lgd.usuarios||[]).forEach(u=>{logs[u.userId]=u;});
     stats();renderL();
     document.getElementById("st").textContent=leads.length+" contatos · "+new Date().toLocaleTimeString("pt-BR");
-  }catch(e){document.getElementById("st").textContent="Erro ao conectar";document.getElementById("cl").innerHTML='<div class="nc">❌ Sem conexão com o servidor</div>';}
+  }catch(e){document.getElementById("st").textContent="Erro ao conectar";document.getElementById("cl").innerHTML='<div class="nc">Sem conexão com o servidor</div>';}
 }
 function stats(){
   const h=new Date().toDateString();
@@ -618,7 +650,7 @@ function renderL(){
     const li=logs[ld.userId]||{};
     const pv=li.ultima?"Última: "+fhora(li.ultima):"Sem mensagens";
     const ac=ativo===ld.userId?"active":"";
-    return '<div class="ci '+ac+'" onclick="abrir(\''+ld.userId+'\')"><div class="cn">'+( ld.nome||"Sem nome")+'</div><div class="cp">'+ftel(ld.contato)+'</div><div class="cv">'+pv+'</div><div class="cm"><span class="sb status-'+(ld.status||"CURIOSA")+'">'+(ld.status||"CURIOSA")+'</span><span class="ct">'+fhora(ld.timestamp)+'</span></div></div>';
+    return '<div class="ci '+ac+'" onclick="abrir(\''+ld.userId+'\')"><div class="cn">'+(ld.nome||"Sem nome")+'</div><div class="cp">'+ftel(ld.contato)+'</div><div class="cv">'+pv+'</div><div class="cm"><span class="sb status-'+(ld.status||"CURIOSA")+'">'+(ld.status||"CURIOSA")+'</span><span class="ct">'+fhora(ld.timestamp)+'</span></div></div>';
   }).join("");
 }
 async function abrir(userId){
@@ -626,11 +658,11 @@ async function abrir(userId){
   const ld=leads.find(l=>l.userId===userId)||{};
   document.getElementById("ch").style.display="flex";
   document.getElementById("av").textContent=ini(ld.nome);
-  document.getElementById("cn").textContent=ld.nome||"Sem nome";
+  document.getElementById("cnm").textContent=ld.nome||"Sem nome";
   document.getElementById("cph").textContent=ftel(ld.contato);
-  document.getElementById("ci").textContent=ld.interesse||"Interesse não identificado";
-  document.getElementById("cc").textContent=ld.plataforma||"desconhecido";
-  const se=document.getElementById("cs");
+  document.getElementById("cint").textContent=ld.interesse||"Interesse não identificado";
+  document.getElementById("ccan").textContent=ld.plataforma||"desconhecido";
+  const se=document.getElementById("cst");
   se.textContent=ld.status||"CURIOSA";se.className="sb status-"+(ld.status||"CURIOSA");
   const ma=document.getElementById("ma");
   ma.innerHTML='<div class="loading"><div class="spinner"></div> Carregando...</div>';
@@ -648,33 +680,35 @@ async function abrir(userId){
 }
 function recarregar(){document.getElementById("st").textContent="Atualizando...";carregar();if(ativo)setTimeout(()=>abrir(ativo),800);}
 carregar();setInterval(recarregar,30000);
-</script>
+<\/script>
 </body>
 </html>`;
   res.send(painelHtml);
 });
 
 // ============ ROTAS ADMIN ============
-app.get("/leads", (req, res) => {
+app.get("/leads", async (req, res) => {
   if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta." });
-  leadsDB = lerDB(DB_LEADS);
-  const lista = Object.values(leadsDB).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const lista = await getAllLeads();
   res.json({ total: lista.length, leads: lista });
 });
 
-app.get("/logs", (req, res) => {
+app.get("/logs", async (req, res) => {
   if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta." });
-  logsDB = lerDB(DB_LOGS);
-  if (req.query.userId) return res.json({ logs: logsDB[req.query.userId] || [] });
-  const resumo = Object.entries(logsDB).map(([userId, msgs]) => ({
-    userId, totalMensagens: msgs.length, ultima: msgs[msgs.length - 1]?.timestamp
-  }));
+  if (req.query.userId) {
+    const msgs = await getLogs(req.query.userId);
+    return res.json({ logs: msgs });
+  }
+  const resumo = await getAllLogsResumo();
   res.json({ totalUsuarios: resumo.length, usuarios: resumo });
 });
 
 app.get("/", (req, res) => {
-  res.json({ status: "Ana no ar ✅", escola: "Escola de Amor-Próprio", leads: Object.keys(leadsDB).length, conversas: Object.keys(conversas).length });
+  res.json({ status: "Ana no ar ✅", escola: "Escola de Amor-Próprio", db: db ? "MongoDB conectado" : "sem banco" });
 });
 
+// ============ START ============
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("✅ Ana rodando na porta " + PORT));
+conectarMongo().then(() => {
+  app.listen(PORT, () => console.log("✅ Ana rodando na porta " + PORT));
+});
