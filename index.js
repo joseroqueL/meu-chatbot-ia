@@ -163,21 +163,26 @@ let logsCol = null;
 async function conectarMongo() {
   if (db) return;
   try {
-    const client = new MongoClient(MONGODB_URI, {
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      serverSelectionTimeoutMS: 10000,
+    console.log("🔄 Conectando MongoDB...");
+    const uri = MONGODB_URI + (MONGODB_URI.includes("?") ? "&" : "?") + "tls=true&tlsInsecure=false";
+    const client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000,
+      socketTimeoutMS: 15000,
     });
     await client.connect();
+    // Testa a conexão
+    await client.db("admin").command({ ping: 1 });
     db = client.db("escolabot");
     leadsCol = db.collection("leads");
     logsCol = db.collection("logs");
-    // Índices para busca rápida
     await leadsCol.createIndex({ userId: 1 }, { unique: true });
     await logsCol.createIndex({ userId: 1 });
-    console.log("✅ MongoDB conectado");
+    console.log("✅ MongoDB conectado com sucesso");
   } catch(e) {
-    console.error("❌ MongoDB erro:", e.message);
+    console.error("❌ MongoDB erro completo:", e.message, e.code);
+    // Tenta reconectar após 10s
+    setTimeout(conectarMongo, 10000);
   }
 }
 
