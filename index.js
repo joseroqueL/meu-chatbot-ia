@@ -99,14 +99,10 @@ Só registre DEPOIS de identificar nome E intenção da pessoa. Nunca na primeir
 Inclua ao final da resposta (invisível para a cliente):
 [LEAD: nome=X | contato=Y | interesse=Z | status=CURIOSA ou AQUECIDA ou PRONTA]
 
-# PRIMEIRA MENSAGEM — BOAS-VINDAS
-Quando a pessoa mandar a primeira mensagem, acolha com calor ANTES de responder ao conteúdo:
-
-Olá! Seja bem-vinda à *Escola de Amor-Próprio* 🌸
-
-Sou a Ana, e estou aqui para te ajudar a encontrar o caminho certo dentro da nossa escola.
-
-_Pode me contar o que te trouxe até aqui?_
+# CONTEXTO DA CONVERSA
+O sistema vai te informar se é o PRIMEIRO contato da pessoa ou se ela já conhece a escola.
+Se informado [PRIMEIRA_VEZ], acolha com calor e apresente a escola antes de responder.
+Se não informado, é retorno — trate com naturalidade sem se reapresentar.
 
 # AULA AVULSA DE SÁBADO — AGENDE E COBRE DIRETO
 Quando demonstrar interesse na aula de sábado:
@@ -339,15 +335,24 @@ async function processarImagem(userId, imageId) {
 // ============ IA ============
 async function chamarIA(userId, msg, plataforma) {
   await addLog(userId, "user", msg, plataforma);
-  addMsg(userId, "user", msg);
+  addMsg(userId, "user", msg); // será sobrescrito com contexto abaixo se necessário
 
   let lead = await getLead(userId);
+  const isPrimeiro = !lead;
   if (!lead) {
-    lead = { userId, contato: userId, plataforma, status: "CURIOSA", timestamp: new Date().toISOString() };
+    lead = { userId, contato: userId, plataforma, status: "CURIOSA", timestamp: new Date().toISOString(), boasVindasEnviado: true };
     await saveLead(lead);
     await alertaNovo(lead);
     console.log("Novo lead:", userId);
   }
+
+  // Sinaliza para a IA se é primeiro contato
+  const contexto = isPrimeiro ? "[PRIMEIRA_VEZ] " : "";
+  const msgComContexto = contexto + msg;
+
+  // Adiciona ao histórico com contexto correto
+  const hist = getHist(userId);
+  hist[hist.length - 1] = { role: "user", content: msgComContexto };
 
   let resposta = "Desculpe, tive um problema técnico. Tente novamente em instantes 🌸";
   try {
