@@ -460,6 +460,60 @@ carregar();setInterval(carregar,30000);
 </html>`);
 });
 
+
+// ============ PRIVACIDADE ============
+app.get("/privacidade", (req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.end(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Política de Privacidade — Escola de Amor-Próprio</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Georgia,serif;background:#fdf6f0;color:#1a1218;line-height:1.8}
+.wrap{max-width:680px;margin:0 auto;padding:48px 24px}
+h1{font-size:26px;color:#8a3f52;margin-bottom:8px}
+h2{font-size:17px;color:#8a3f52;margin:28px 0 8px}
+p{font-size:15px;color:#3a2a30;margin-bottom:12px}
+.sub{font-size:13px;color:#7a6570;margin-bottom:32px}
+footer{margin-top:48px;font-size:12px;color:#7a6570;border-top:1px solid #f0d5dc;padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Política de Privacidade</h1>
+  <p class="sub">Escola de Amor-Próprio — Última atualização: ${new Date().toLocaleDateString("pt-BR")}</p>
+
+  <h2>1. Quem somos</h2>
+  <p>A Escola de Amor-Próprio é um Centro Integral de Cuidado com a Mulher, fundado em Belém-PA pela terapeuta Ludmilla Raissuli. Este chatbot é utilizado para atendimento e informações sobre nossos serviços.</p>
+
+  <h2>2. Quais dados coletamos</h2>
+  <p>Coletamos apenas as informações fornecidas voluntariamente durante a conversa: nome, número de telefone ou identificador da plataforma, e o conteúdo das mensagens trocadas com o assistente virtual Ana.</p>
+
+  <h2>3. Como usamos os dados</h2>
+  <p>Os dados são usados exclusivamente para melhorar o atendimento, responder dúvidas sobre nossos serviços e entrar em contato quando solicitado. Não vendemos nem compartilhamos seus dados com terceiros.</p>
+
+  <h2>4. Armazenamento e segurança</h2>
+  <p>As informações são armazenadas em servidores seguros e acessadas apenas pela equipe da Escola de Amor-Próprio. Você pode solicitar a exclusão dos seus dados a qualquer momento.</p>
+
+  <h2>5. Seus direitos</h2>
+  <p>Você tem direito de acessar, corrigir ou solicitar a exclusão de seus dados. Para exercer esses direitos, entre em contato pelo WhatsApp (91) 98134-7134 ou pelo e-mail escoladeamorproprio@gmail.com.</p>
+
+  <h2>6. Contato</h2>
+  <p>Escola de Amor-Próprio<br>
+  Tv. Dom Romualdo Coelho, 1072 — Belém, PA<br>
+  WhatsApp: (91) 98134-7134<br>
+  E-mail: escoladeamorproprio@gmail.com<br>
+  Instagram: @escoladeamorproprio</p>
+
+  <footer>Esta política está em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</footer>
+</div>
+</body>
+</html>`);
+});
+
 // ============ START ============
 const PORT = process.env.PORT || 3000;
 conectarMongo().then(() => {
