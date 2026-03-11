@@ -152,7 +152,7 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "meu_token_secreto";
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const LEADS_PASSWORD = process.env.LEADS_PASSWORD || "escola2024";
-const PAINEL_SENHA = process.env.PAINEL_SENHA || "painel2024";
+const PAINEL_SENHA = process.env.PAINEL_SENHA || "Juliano1072";
 const MONGODB_URI = process.env.MONGODB_URI;
 
 // ============ MONGODB ============
@@ -511,9 +511,35 @@ app.post("/webhook/facebook", async (req, res) => {
 });
 
 // ============ PAINEL ============
+// Cookie parser simples
+app.use((req, res, next) => {
+  req.cookies = {};
+  const ch = req.headers.cookie;
+  if (ch) ch.split(";").forEach(c => { const [k,v] = c.trim().split("="); req.cookies[k] = v; });
+  next();
+});
+
+app.post("/painel-login", express.urlencoded({ extended: false }), (req, res) => {
+  const senha = req.body.senha;
+  if (senha === PAINEL_SENHA) {
+    res.setHeader("Set-Cookie", "painel_auth=" + PAINEL_SENHA + "; Path=/; HttpOnly; Max-Age=86400");
+    return res.redirect("/painel");
+  }
+  res.redirect("/painel?erro=1");
+});
+
 app.get("/painel", (req, res) => {
-  if (req.query.senha !== PAINEL_SENHA) {
-    return res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel Ana</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:#fdf6f0;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{background:white;border-radius:16px;padding:48px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);max-width:360px;width:90%}h1{font-family:'Playfair Display',serif;color:#8a3f52;margin-bottom:8px;font-size:22px}p{color:#7a6570;font-size:14px;margin-bottom:24px}input{width:100%;padding:12px 16px;border:1px solid #f0d5dc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:12px}button{width:100%;padding:12px;background:#c9748a;color:white;border:none;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer}button:hover{background:#8a3f52}</style></head><body><div class="box"><h1>Painel Ana 🌸</h1><p>Escola de Amor-Próprio</p><input type="password" id="s" placeholder="Senha de acesso" onkeydown="if(event.key==='Enter')entrar()"><button onclick="entrar()">Entrar</button></div><script>function entrar(){const s=document.getElementById('s').value;if(s)window.location.href='/painel?senha='+encodeURIComponent(s);}<\/script></body></html>`);
+  // Login via POST para não expor senha na URL
+  const senhaQuery = req.query.senha;
+  const senhaSession = req.cookies && req.cookies.painel_auth;
+  if (senhaQuery !== PAINEL_SENHA && senhaSession !== PAINEL_SENHA) {
+    const erro = req.query.erro ? '<p style="color:#c62828;font-size:13px;margin-bottom:12px">Senha incorreta</p>' : '';
+    return res.send(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel Ana</title><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:#fdf6f0;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{background:white;border-radius:16px;padding:48px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08);max-width:360px;width:90%}h1{font-family:'Playfair Display',serif;color:#8a3f52;margin-bottom:8px;font-size:22px}p{color:#7a6570;font-size:14px;margin-bottom:24px}input{width:100%;padding:12px 16px;border:1px solid #f0d5dc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:12px}button{width:100%;padding:12px;background:#c9748a;color:white;border:none;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;cursor:pointer}button:hover{background:#8a3f52}</style></head><body><div class="box"><h1>Painel Ana 🌸</h1><p>Escola de Amor-Próprio</p>${erro}<form method="POST" action="/painel-login"><input type="password" name="senha" placeholder="Senha de acesso" autofocus><button type="submit">Entrar</button></form></div></body></html>`);
+  }
+  // Redireciona para URL limpa se veio com senha na query
+  if (senhaQuery === PAINEL_SENHA) {
+    res.setHeader("Set-Cookie", "painel_auth=" + PAINEL_SENHA + "; Path=/; HttpOnly; Max-Age=86400");
+    return res.redirect("/painel");
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   const painelHtml = `<!DOCTYPE html>
