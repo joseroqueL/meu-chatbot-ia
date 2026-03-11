@@ -3,6 +3,13 @@ const fs = require("fs");
 const { MongoClient } = require("mongodb");
 const app = express();
 app.use(express.json({ limit: "10mb" }));
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
 
 const IA_NOME = "Ana";
 const IA_TOM = "acolhedor, gentil, feminino e empoderador";
@@ -655,7 +662,7 @@ header{background:var(--dark);padding:16px 28px;display:flex;align-items:center;
   </div>
 </div>
 <script>
-const BASE="https://meu-chatbot-ia-production.up.railway.app";
+const BASE="";
 const SENHA="${LEADS_PASSWORD}";
 let leads=[],logs={},filtro="todos",ativo=null;
 function ftel(n){if(!n)return"-";const d=n.replace(/\\D/g,"");if(d.length===13)return"+"+d.slice(0,2)+" ("+d.slice(2,4)+") "+d.slice(4,9)+"-"+d.slice(9);if(d.length===12)return"+"+d.slice(0,2)+" ("+d.slice(2,4)+") "+d.slice(4,8)+"-"+d.slice(8);return n;}
