@@ -461,6 +461,35 @@ carregar();setInterval(carregar,30000);
 });
 
 
+
+// ============ TERMOS ============
+app.get("/termos", (req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  const d = new Date().toLocaleDateString("pt-BR");
+  const parts = [
+    '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+    '<title>Termos de Servico - Escola de Amor-Proprio</title>',
+    '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Georgia,serif;background:#fdf6f0;color:#1a1218;line-height:1.8}.wrap{max-width:680px;margin:0 auto;padding:48px 24px}h1{font-size:26px;color:#8a3f52;margin-bottom:8px}h2{font-size:17px;color:#8a3f52;margin:28px 0 8px}p{font-size:15px;color:#3a2a30;margin-bottom:12px}.sub{font-size:13px;color:#7a6570;margin-bottom:32px}footer{margin-top:48px;font-size:12px;color:#7a6570;border-top:1px solid #f0d5dc;padding-top:16px}</style>',
+    '</head><body><div class="wrap">',
+    '<h1>Termos de Servico</h1>',
+    '<p class="sub">Escola de Amor-Proprio &mdash; Ultima atualizacao: ' + d + '</p>',
+    '<h2>1. Aceitacao dos Termos</h2>',
+    '<p>Ao utilizar o assistente virtual Ana da Escola de Amor-Proprio, voce concorda com estes Termos de Servico.</p>',
+    '<h2>2. Sobre o servico</h2>',
+    '<p>O assistente virtual Ana e um chatbot de atendimento disponivel via WhatsApp e Instagram, com o objetivo de fornecer informacoes sobre nossos servicos e facilitar o agendamento.</p>',
+    '<h2>3. Uso adequado</h2>',
+    '<p>O servico deve ser utilizado apenas para fins legitimos relacionados aos servicos da Escola de Amor-Proprio. E proibido o uso para fins ilicitos ou abusivos.</p>',
+    '<h2>4. Limitacao de responsabilidade</h2>',
+    '<p>O assistente virtual fornece informacoes de carater geral. Para decisoes de saude fisica ou mental, recomendamos consultar profissionais habilitados.</p>',
+    '<h2>5. Contato</h2>',
+    '<p>Escola de Amor-Proprio<br>Tv. Dom Romualdo Coelho, 1072 &mdash; Belem, PA<br>WhatsApp: (91) 98134-7134<br>E-mail: escoladeamorproprio@gmail.com</p>',
+    '<footer>Em conformidade com o Codigo de Defesa do Consumidor e a legislacao brasileira vigente.</footer>',
+    '</div></body></html>'
+  ];
+  res.end(parts.join(""));
+});
+
 // ============ PRIVACIDADE ============
 app.get("/privacidade", (req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
