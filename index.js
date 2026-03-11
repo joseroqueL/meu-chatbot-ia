@@ -164,13 +164,12 @@ async function conectarMongo() {
   if (db) return;
   try {
     console.log("🔄 Conectando MongoDB...");
+    const isInternal = MONGODB_URI.includes(".railway.internal") || MONGODB_URI.includes("localhost");
     const client = new MongoClient(MONGODB_URI, {
       serverSelectionTimeoutMS: 15000,
       connectTimeoutMS: 15000,
       socketTimeoutMS: 15000,
-      tls: true,
-      tlsAllowInvalidCertificates: true,
-      tlsAllowInvalidHostnames: true,
+      tls: !isInternal,
     });
     await client.connect();
     // Testa a conexão
