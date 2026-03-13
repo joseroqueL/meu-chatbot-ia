@@ -17,6 +17,7 @@ const LEADS_PASSWORD = process.env.LEADS_PASSWORD || "escola2024";
 const PAINEL_SENHA = process.env.PAINEL_SENHA || "painel2024";
 const MONGODB_URI = process.env.MONGODB_URI;
 const IG_ACCOUNT_ID = "17841401948747652";
+const IG_PAGE_ID = "223210454453170";
 
 // ============ MONGODB ============
 let db = null, leadsCol = null, logsCol = null;
@@ -255,7 +256,7 @@ app.post("/webhook/instagram", async (req, res) => {
     if (!checarRate(uid)) return res.sendStatus(200);
     const token = process.env.INSTAGRAM_TOKEN;
     const send = async (text) => {
-      const r = await fetch("https://graph.facebook.com/v21.0/" + IG_ACCOUNT_ID + "/messages", {
+      const r = await fetch("https://graph.facebook.com/v21.0/" + IG_PAGE_ID + "/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
         body: JSON.stringify({ recipient: { id: uid }, message: { text }, messaging_type: "RESPONSE" })
@@ -297,7 +298,7 @@ app.post("/webhook/instagram2", async (req, res) => {
     if (!checarRate(uid)) return res.sendStatus(200);
     const token = process.env.INSTAGRAM_TOKEN_2;
     const send = async (text) => {
-      await fetch("https://graph.facebook.com/v21.0/" + IG_ACCOUNT_ID + "/messages", {
+      await fetch("https://graph.facebook.com/v21.0/" + IG_PAGE_ID + "/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
         body: JSON.stringify({ recipient: { id: uid }, message: { text }, messaging_type: "RESPONSE" })
