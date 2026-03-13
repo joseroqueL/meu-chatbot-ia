@@ -16,6 +16,7 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const LEADS_PASSWORD = process.env.LEADS_PASSWORD || "escola2024";
 const PAINEL_SENHA = process.env.PAINEL_SENHA || "painel2024";
 const MONGODB_URI = process.env.MONGODB_URI;
+const IG_ACCOUNT_ID = "17841401948747652";
 
 // ============ MONGODB ============
 let db = null, leadsCol = null, logsCol = null;
@@ -199,7 +200,7 @@ function agendarRetomada(uid, sendFn) {
   }, 10 * 60 * 1000);
 }
 
-// ============ WEBHOOKS ============
+// ============ WEBHOOKS WHATSAPP ============
 app.get("/webhook/whatsapp", (req, res) => {
   if (req.query["hub.verify_token"] === VERIFY_TOKEN) res.send(req.query["hub.challenge"]);
   else res.sendStatus(403);
@@ -224,35 +225,85 @@ app.post("/webhook/whatsapp", async (req, res) => {
   } catch(e) { console.error("WA erro:", e.message); res.sendStatus(500); }
 });
 
+// ============ WEBHOOKS INSTAGRAM (@escoladeamorproprio) ============
 app.get("/webhook/instagram", (req, res) => {
+  console.log("IG verificacao:", req.query);
   if (req.query["hub.verify_token"] === VERIFY_TOKEN) res.send(req.query["hub.challenge"]);
   else res.sendStatus(403);
 });
 app.post("/webhook/instagram", async (req, res) => {
   try {
-    const messaging = req.body.entry?.[0]?.messaging?.[0];
-    if (!messaging?.message?.text) return res.sendStatus(200);
-    const uid = messaging.sender.id;
+    console.log("IG webhook recebido:", JSON.stringify(req.body));
+    const entry = req.body.entry?.[0];
+    // Suporte a formato novo (changes) e formato antigo (messaging)
+    let uid, texto;
+    if (entry?.changes) {
+      const change = entry.changes[0];
+      const msg = change?.value?.messages?.[0];
+      if (!msg || msg.type !== "text") return res.sendStatus(200);
+      uid = msg.from;
+      texto = msg.text?.body;
+    } else if (entry?.messaging) {
+      const messaging = entry.messaging[0];
+      if (!messaging?.message?.text) return res.sendStatus(200);
+      uid = messaging.sender.id;
+      texto = messaging.message.text;
+    } else {
+      return res.sendStatus(200);
+    }
+    if (!uid || !texto) return res.sendStatus(200);
     if (!checarRate(uid)) return res.sendStatus(200);
-    const send = async (text) => { await fetch("https://graph.facebook.com/v18.0/me/messages", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.INSTAGRAM_TOKEN }, body: JSON.stringify({ recipient: { id: uid }, message: { text } }) }); };
-    await send(await chamarIA(uid, messaging.message.text, "instagram"));
+    const token = process.env.INSTAGRAM_TOKEN;
+    const send = async (text) => {
+      const r = await fetch("https://graph.facebook.com/v21.0/" + IG_ACCOUNT_ID + "/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ recipient: { id: uid }, message: { text }, messaging_type: "RESPONSE" })
+      });
+      const d = await r.json();
+      console.log("IG send result:", JSON.stringify(d));
+    };
+    await send(await chamarIA(uid, texto, "instagram"));
     agendarRetomada(uid, send);
     res.sendStatus(200);
   } catch(e) { console.error("IG erro:", e.message); res.sendStatus(500); }
 });
 
+// ============ WEBHOOKS INSTAGRAM2 (@ludmillaraissuli) ============
 app.get("/webhook/instagram2", (req, res) => {
   if (req.query["hub.verify_token"] === VERIFY_TOKEN) res.send(req.query["hub.challenge"]);
   else res.sendStatus(403);
 });
 app.post("/webhook/instagram2", async (req, res) => {
   try {
-    const messaging = req.body.entry?.[0]?.messaging?.[0];
-    if (!messaging?.message?.text) return res.sendStatus(200);
-    const uid = messaging.sender.id;
+    console.log("IG2 webhook recebido:", JSON.stringify(req.body));
+    const entry = req.body.entry?.[0];
+    let uid, texto;
+    if (entry?.changes) {
+      const change = entry.changes[0];
+      const msg = change?.value?.messages?.[0];
+      if (!msg || msg.type !== "text") return res.sendStatus(200);
+      uid = msg.from;
+      texto = msg.text?.body;
+    } else if (entry?.messaging) {
+      const messaging = entry.messaging[0];
+      if (!messaging?.message?.text) return res.sendStatus(200);
+      uid = messaging.sender.id;
+      texto = messaging.message.text;
+    } else {
+      return res.sendStatus(200);
+    }
+    if (!uid || !texto) return res.sendStatus(200);
     if (!checarRate(uid)) return res.sendStatus(200);
-    const send = async (text) => { await fetch("https://graph.facebook.com/v18.0/me/messages", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.INSTAGRAM_TOKEN_2 }, body: JSON.stringify({ recipient: { id: uid }, message: { text } }) }); };
-    await send(await chamarIA(uid, messaging.message.text, "instagram2"));
+    const token = process.env.INSTAGRAM_TOKEN_2;
+    const send = async (text) => {
+      await fetch("https://graph.facebook.com/v21.0/" + IG_ACCOUNT_ID + "/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ recipient: { id: uid }, message: { text }, messaging_type: "RESPONSE" })
+      });
+    };
+    await send(await chamarIA(uid, texto, "instagram2"));
     agendarRetomada(uid, send);
     res.sendStatus(200);
   } catch(e) { console.error("IG2 erro:", e.message); res.sendStatus(500); }
@@ -460,8 +511,6 @@ carregar();setInterval(carregar,30000);
 </html>`);
 });
 
-
-
 // ============ TERMOS ============
 app.get("/termos", (req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -514,29 +563,18 @@ footer{margin-top:48px;font-size:12px;color:#7a6570;border-top:1px solid #f0d5dc
 <div class="wrap">
   <h1>Política de Privacidade</h1>
   <p class="sub">Escola de Amor-Próprio — Última atualização: ${new Date().toLocaleDateString("pt-BR")}</p>
-
   <h2>1. Quem somos</h2>
-  <p>A Escola de Amor-Próprio é um Centro Integral de Cuidado com a Mulher, fundado em Belém-PA pela terapeuta Ludmilla Raissuli. Este chatbot é utilizado para atendimento e informações sobre nossos serviços.</p>
-
+  <p>A Escola de Amor-Próprio é um Centro Integral de Cuidado com a Mulher, fundado em Belém-PA pela terapeuta Ludmilla Raissuli.</p>
   <h2>2. Quais dados coletamos</h2>
   <p>Coletamos apenas as informações fornecidas voluntariamente durante a conversa: nome, número de telefone ou identificador da plataforma, e o conteúdo das mensagens trocadas com o assistente virtual Ana.</p>
-
   <h2>3. Como usamos os dados</h2>
   <p>Os dados são usados exclusivamente para melhorar o atendimento, responder dúvidas sobre nossos serviços e entrar em contato quando solicitado. Não vendemos nem compartilhamos seus dados com terceiros.</p>
-
   <h2>4. Armazenamento e segurança</h2>
   <p>As informações são armazenadas em servidores seguros e acessadas apenas pela equipe da Escola de Amor-Próprio. Você pode solicitar a exclusão dos seus dados a qualquer momento.</p>
-
   <h2>5. Seus direitos</h2>
   <p>Você tem direito de acessar, corrigir ou solicitar a exclusão de seus dados. Para exercer esses direitos, entre em contato pelo WhatsApp (91) 98134-7134 ou pelo e-mail escoladeamorproprio@gmail.com.</p>
-
   <h2>6. Contato</h2>
-  <p>Escola de Amor-Próprio<br>
-  Tv. Dom Romualdo Coelho, 1072 — Belém, PA<br>
-  WhatsApp: (91) 98134-7134<br>
-  E-mail: escoladeamorproprio@gmail.com<br>
-  Instagram: @escoladeamorproprio</p>
-
+  <p>Escola de Amor-Próprio<br>Tv. Dom Romualdo Coelho, 1072 — Belém, PA<br>WhatsApp: (91) 98134-7134<br>E-mail: escoladeamorproprio@gmail.com<br>Instagram: @escoladeamorproprio</p>
   <footer>Esta política está em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</footer>
 </div>
 </body>
