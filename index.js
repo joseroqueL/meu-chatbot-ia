@@ -750,12 +750,12 @@ app.post("/webhook/instagram2", (req, res) => {
 
 // ============ ROTAS ADMIN ============
 app.get("/leads", async (req, res) => {
-  if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta" });
+  if (req.query.senha !== PAINEL_SENHA) return res.status(401).json({ erro: "Senha incorreta" });
   const lista = await getAllLeads();
   res.json({ total: lista.length, leads: lista });
 });
 app.delete("/leads", async (req, res) => {
-  if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta" });
+  if (req.query.senha !== PAINEL_SENHA) return res.status(401).json({ erro: "Senha incorreta" });
   const uid = req.query.userId;
   if (!uid) return res.status(400).json({ erro: "userId obrigatorio" });
   try {
@@ -770,7 +770,7 @@ app.delete("/leads", async (req, res) => {
   } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 app.get("/logs", async (req, res) => {
-  if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta" });
+  if (req.query.senha !== PAINEL_SENHA) return res.status(401).json({ erro: "Senha incorreta" });
   if (req.query.userId) { const msgs = await getLogs(req.query.userId); return res.json({ logs: msgs }); }
   const resumo = await getAllLogsResumo();
   res.json({ totalUsuarios: resumo.length, usuarios: resumo });
@@ -787,7 +787,7 @@ app.get("/painel", (req, res) => {
     return res.end(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel Ana</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:sans-serif;background:#fdf6f0;display:flex;align-items:center;justify-content:center;min-height:100vh}.box{background:#fff;border-radius:16px;padding:40px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.08);max-width:340px;width:90%}h1{color:#8a3f52;margin-bottom:6px;font-size:20px}p{color:#7a6570;font-size:13px;margin-bottom:20px}input{width:100%;padding:11px 14px;border:1px solid #f0d5dc;border-radius:8px;font-size:14px;outline:none;margin-bottom:10px}button{width:100%;padding:11px;background:#c9748a;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer}input:focus{border-color:#c9748a}</style></head><body><div class="box"><h1>Painel Ana 🌸</h1><p>Escola de Amor-Proprio</p><input type="password" id="s" placeholder="Senha" onkeydown="if(event.key==='Enter')document.getElementById('btn').click()"><button id="btn" onclick="(function(){var s=document.getElementById('s').value;if(s)window.location.href='/painel?senha='+s;})()">Entrar</button></div></body></html>`);
   }
 
-  const pwd = LEADS_PASSWORD;
+  const pwd = PAINEL_SENHA;
   res.end(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1189,17 +1189,26 @@ function exportWA() {
 function carregar() {
   document.getElementById("st").textContent = "Atualizando...";
   Promise.all([
-    fetch("/leads?senha=" + PWD).then(function(r) { return r.json(); }),
-    fetch("/logs?senha=" + PWD).then(function(r) { return r.json(); })
+    fetch("/leads?senha=" + PWD).then(function(r) {
+      if (!r.ok) throw new Error("Leads: " + r.status);
+      return r.json();
+    }),
+    fetch("/logs?senha=" + PWD).then(function(r) {
+      if (!r.ok) throw new Error("Logs: " + r.status);
+      return r.json();
+    })
   ]).then(function(res) {
     lds = res[0].leads || []; lmap = {};
     (res[1].usuarios || []).forEach(function(u) { lmap[u.userId] = u; });
     stats(); rl();
     document.getElementById("st").textContent = lds.length + " contatos";
+    if (!lds.length) {
+      document.getElementById("lista").innerHTML = '<div class="nc">Nenhum contato ainda. Quando alguem mandar mensagem no WhatsApp, vai aparecer aqui!</div>';
+    }
     if (ati) setTimeout(function() { abrir(ati); }, 100);
-  }).catch(function() {
-    document.getElementById("st").textContent = "Erro de conexao";
-    document.getElementById("lista").innerHTML = '<div class="nc">Sem conexao com o servidor</div>';
+  }).catch(function(err) {
+    document.getElementById("st").textContent = "Erro";
+    document.getElementById("lista").innerHTML = '<div class="nc">Erro ao carregar: ' + esc(err.message) + '</div>';
   });
 }
 
