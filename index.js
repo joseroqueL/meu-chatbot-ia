@@ -668,7 +668,7 @@ function abrir(uid){
         var m=lg[i],ia=m.role==="assistant";
         var txt=(m.texto||"").replace(/</g,"&lt;").replace(/>/g,"&gt;");
         var mediaHtml="";
-        if(m.tipo==="image"&&m.mediaData){mediaHtml='<img src="'+m.mediaData+'" class="media-img" onclick="this.classList.toggle(\'expanded\')">';}
+        if(m.tipo==="image"&&m.mediaData){mediaHtml='<img src="'+m.mediaData+'" class="media-img" onclick="this.classList.toggle(&apos;expanded&apos;)">';}
         else if(m.tipo==="image"){mediaHtml='<div class="media-tag">Imagem</div>';}
         else if(m.tipo==="audio"&&m.mediaData){mediaHtml='<audio controls class="media-audio"><source src="'+m.mediaData+'"></audio>';}
         else if(m.tipo==="audio"){mediaHtml='<div class="media-tag">Audio</div>';}
