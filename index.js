@@ -39,18 +39,18 @@ async function conectarMongo() {
     await leadsCol.createIndex({ userId: 1 }, { unique: true });
     await logsCol.createIndex({ userId: 1 });
     console.log("MongoDB conectado");
-  } catch(e) {
+  } catch (e) {
     console.error("MongoDB erro:", e.message);
     setTimeout(conectarMongo, 10000);
   }
 }
 
-async function getLead(uid) { try { return await leadsCol.findOne({ userId: uid }); } catch(e) { return null; } }
-async function saveLead(l) { try { await leadsCol.updateOne({ userId: l.userId }, { $set: l }, { upsert: true }); } catch(e) { console.error("saveLead:", e.message); } }
-async function getLogs(uid) { try { const d = await logsCol.findOne({ userId: uid }); return d ? d.msgs : []; } catch(e) { return []; } }
-async function addLog(uid, role, texto, plataforma) { try { await logsCol.updateOne({ userId: uid }, { $push: { msgs: { $each: [{ role, texto, plataforma, timestamp: new Date().toISOString() }], $slice: -100 } } }, { upsert: true }); } catch(e) {} }
-async function getAllLeads() { try { return await leadsCol.find({}).sort({ timestamp: -1 }).toArray(); } catch(e) { return []; } }
-async function getAllLogsResumo() { try { const docs = await logsCol.find({}, { projection: { userId: 1, msgs: 1 } }).toArray(); return docs.map(d => ({ userId: d.userId, ultima: d.msgs && d.msgs.length ? d.msgs[d.msgs.length-1].timestamp : null })); } catch(e) { return []; } }
+async function getLead(uid) { try { return await leadsCol.findOne({ userId: uid }); } catch (e) { return null; } }
+async function saveLead(l) { try { await leadsCol.updateOne({ userId: l.userId }, { $set: l }, { upsert: true }); } catch (e) { console.error("saveLead:", e.message); } }
+async function getLogs(uid) { try { const d = await logsCol.findOne({ userId: uid }); return d ? d.msgs : []; } catch (e) { return []; } }
+async function addLog(uid, role, texto, plataforma) { try { await logsCol.updateOne({ userId: uid }, { $push: { msgs: { $each: [{ role, texto, plataforma, timestamp: new Date().toISOString() }], $slice: -100 } } }, { upsert: true }); } catch (e) { } }
+async function getAllLeads() { try { return await leadsCol.find({}).sort({ timestamp: -1 }).toArray(); } catch (e) { return []; } }
+async function getAllLogsResumo() { try { const docs = await logsCol.find({}, { projection: { userId: 1, msgs: 1 } }).toArray(); return docs.map(d => ({ userId: d.userId, ultima: d.msgs && d.msgs.length ? d.msgs[d.msgs.length - 1].timestamp : null })); } catch (e) { return []; } }
 
 // ============ RATE LIMIT ============
 const rateLimits = {};
@@ -69,7 +69,7 @@ function addMsg(id, role, content) { const h = getHist(id); h.push({ role, conte
 // ============ TELEGRAM ============
 async function tg(texto) {
   if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
-  try { await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: texto, parse_mode: "Markdown" }) }); } catch(e) {}
+  try { await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: texto, parse_mode: "Markdown" }) }); } catch (e) { }
 }
 async function tgFoto(url, caption) {
   if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
@@ -80,13 +80,13 @@ async function tgFoto(url, caption) {
     const hdr = Buffer.from("--" + b + "\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n" + TELEGRAM_CHAT_ID + "\r\n--" + b + "\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n" + caption + "\r\n--" + b + "\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"comprovante.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n");
     const ftr = Buffer.from("\r\n--" + b + "--\r\n");
     await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendPhoto", { method: "POST", headers: { "Content-Type": "multipart/form-data; boundary=" + b }, body: Buffer.concat([hdr, buf, ftr]) });
-  } catch(e) { await tg(caption + "\n_(imagem não encaminhada)_"); }
+  } catch (e) { await tg(caption + "\n_(imagem não encaminhada)_"); }
 }
 
 const agora = () => new Date().toLocaleString("pt-BR");
-async function alertaNovo(l) { await tg("🌸 *NOVO CONTATO*\n\n👤 " + (l.nome||"Aguardando...") + "\n📱 " + (l.contato||"?") + "\n📲 " + (l.plataforma||"?") + "\n🕐 " + agora()); }
-async function alertaPronta(l) { await tg("🔥 *LEAD PRONTA!*\n\n👤 " + (l.nome||"?") + "\n📱 " + (l.contato||"?") + "\n💜 " + (l.interesse||"?") + "\n🕐 " + agora()); }
-async function alertaPago(l) { await tg("💰 *PAGAMENTO CONFIRMADO!*\n\n👤 " + (l.nome||"?") + "\n📱 " + (l.contato||"?") + "\n🕐 " + agora()); }
+async function alertaNovo(l) { await tg("🌸 *NOVO CONTATO*\n\n👤 " + (l.nome || "Aguardando...") + "\n📱 " + (l.contato || "?") + "\n📲 " + (l.plataforma || "?") + "\n🕐 " + agora()); }
+async function alertaPronta(l) { await tg("🔥 *LEAD PRONTA!*\n\n👤 " + (l.nome || "?") + "\n📱 " + (l.contato || "?") + "\n💜 " + (l.interesse || "?") + "\n🕐 " + agora()); }
+async function alertaPago(l) { await tg("💰 *PAGAMENTO CONFIRMADO!*\n\n👤 " + (l.nome || "?") + "\n📱 " + (l.contato || "?") + "\n🕐 " + agora()); }
 
 // ============ IMAGEM ============
 async function processarImagem(uid, imageId) {
@@ -94,54 +94,182 @@ async function processarImagem(uid, imageId) {
     const r = await fetch("https://graph.facebook.com/v18.0/" + imageId, { headers: { "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN } });
     const d = await r.json();
     const lead = await getLead(uid) || {};
-    const caption = "📎 *COMPROVANTE*\n👤 " + (lead.nome||"?") + "\n📱 " + (lead.contato||uid) + "\n🕐 " + agora();
+    const caption = "📎 *COMPROVANTE*\n👤 " + (lead.nome || "?") + "\n📱 " + (lead.contato || uid) + "\n🕐 " + agora();
     await tgFoto(d.url, caption);
     await saveLead({ ...lead, userId: uid, status: "COMPROVANTE_ENVIADO", comprovante: new Date().toISOString() });
     await alertaPago(lead);
-    return "Recebi seu comprovante! ✅\n\n*Vaga confirmada para o sábado* 🌸\n\n_Te esperamos! Qualquer dúvida, é só falar_ 💜";
-  } catch(e) { return "Recebi sua imagem 🤍\n\nVou confirmar com a equipe!"; }
+    return "Recebi seu comprovante! ✅\n\n*Vaga confirmada!* 🌸\n\nTe esperamos no sábado com muito carinho!\nQualquer dúvida, é só falar 💜";
+  } catch (e) { return "Recebi sua imagem 🤍\n\nVou confirmar com a equipe e já te aviso!"; }
 }
 
 // ============ PROMPT ============
-const PROMPT = `Você é Ana, da Escola de Amor-Próprio em Belém-PA, fundada por Ludmilla Raissuli.
+const PROMPT = `Voce e a Ana, atendente da Escola de Amor-Proprio em Belem-PA, fundada pela terapeuta Ludmilla Raissuli.
 
-REGRAS DE ESCRITA — OBRIGATÓRIO:
-- Respostas curtas, máximo 3 linhas
-- Sem asteriscos, underlines ou caracteres especiais
-- Sem emojis em excesso, máximo 1 por mensagem
-- Linguagem direta e simples
-- Nunca diga que é assistente virtual ou IA
+═══════════════════════════════════════
+PERSONALIDADE E TOM
+═══════════════════════════════════════
+- Voce e acolhedora, carinhosa e ENTUSIASMADA
+- Fala como uma amiga animada que quer ajudar
+- Usa expressoes como "Que legal!", "Que lindo!", "Amei!", "Maravilha!"
+- E proativa: sempre oferece o proximo passo
+- Nunca e fria, generica ou robotica
+- Nunca diz que e IA, assistente virtual ou chatbot
+- Voce E a Ana, uma pessoa real da equipe
 
-SERVIÇOS:
-- Dança em Grupo (Sábados): avulsa R$97, mensal R$300, semestral R$250/mes
-- Aula Particular: avulsa R$300, pacote 4x R$250
-- Terapia do Amor-Proprio: 1a sessao R$250, pacote 4x R$200
-- Workshop Mensal: R$100
-- Consultoria Juridica: Direito de Familia e da Mulher
-- Curso Online: Metodo Ludmilla Raissuli
-- Formacao do Feminino: processo terapeutico
+═══════════════════════════════════════
+FORMATACAO OBRIGATORIA (WhatsApp/Instagram)
+═══════════════════════════════════════
+- Use *negrito* para destacar valores e informacoes importantes
+- Use _italico_ para detalhes complementares
+- Use bullet points com • para listas de precos/opcoes
+- Quebre linhas para facilitar leitura (nao envie blocos de texto)
+- Maximo 2 emojis por mensagem, bem posicionados
+- Respostas podem ter ate 8-10 linhas quando precisar passar informacoes completas
+- NAO use # ou ## ou ### (nao e markdown de titulo)
+- NAO use ** duplo, use *simples* para negrito do WhatsApp
 
-CONTATO: WhatsApp (91) 98134-7134 | @escoladeamorproprio | Tv. Dom Romualdo Coelho, 1072 - Belem-PA
+═══════════════════════════════════════
+REGRA DE OURO: INFORMACAO COMPLETA
+═══════════════════════════════════════
+Quando alguem perguntar sobre qualquer servico, SEMPRE envie TODAS as opcoes e valores daquele servico na PRIMEIRA resposta. Nunca diga "a partir de" ou "entre em contato para saber". MOSTRE TUDO.
 
-LUDMILLA: Pos-graduacao em Psicologia Positiva, Terapia Junguiana, Hipnoterapia, Metodo Louise Hay e Constelacoes Familiares. Quase 20 anos de experiencia.
+═══════════════════════════════════════
+SERVICOS E VALORES (sempre informe completo)
+═══════════════════════════════════════
 
-PIX (quando interessar em aula de sabado):
-Escola de Amor-Proprio
-CNPJ: 21.172.163/0001-21
-Valor: R$ 97
-Apos pagar, envia o comprovante aqui.
+DANCA DO VENTRE EM GRUPO (Sabados):
+Quando alguem perguntar de danca, responda EXATAMENTE neste formato:
+---
+Que legal que voce se interessou! Temos aulas de danca do ventre em grupo aos sabados! 🌸
 
-NUNCA USE: gostoso, delicia, ardente, sedutora, sensual, irresistivel, excitante.
+Voce pode vir numa aula experimental ou ja fechar um plano:
 
-CAPTURA DE LEAD — apos identificar nome E intencao, inclua no final (invisivel):
-[LEAD: nome=X | contato=Y | interesse=Z | status=CURIOSA/AQUECIDA/PRONTA]
+• *Aula avulsa (experimental): R$ 97,00*
+• *Mensalidade (aula em grupo): R$ 300,00*
+• *Semestralidade (aula em grupo): R$ 250,00/mes*
 
-PAGAMENTO CONFIRMADO: inclua [PAGO] invisivel na resposta.
+_Tambem temos aulas particulares em horario flexivel!_
 
-PRIMEIRA MENSAGEM: Se indicar [PRIMEIRA_VEZ], apresente a escola brevemente antes de responder.
+Gostaria de agendar uma aula experimental? 🥰
+---
 
-FORA DO HORARIO (antes 8h ou depois 20h): avise que retorna de manha.
-TERAPIA/JURIDICO/PARTICULAR: direcione para (91) 98134-7134.`;
+AULA PARTICULAR DE DANCA:
+• *Aula avulsa: R$ 300,00*
+• *Pacote 4 aulas: R$ 250,00 cada*
+_Horarios flexiveis, agendados direto com a professora._
+
+TERAPIA DO AMOR-PROPRIO:
+• *1a sessao: R$ 250,00*
+• *Pacote 4 sessoes: R$ 200,00 cada*
+_Sessoes individuais com a Ludmilla Raissuli._
+-> Para agendar terapia, direcionar para WhatsApp (91) 98134-7134
+
+WORKSHOP MENSAL:
+• *Valor: R$ 100,00*
+_Encontros tematicos mensais sobre autoconhecimento e feminino._
+
+CONSULTORIA JURIDICA:
+_Direito de Familia e da Mulher_
+-> Direcionar para WhatsApp (91) 98134-7134
+
+CURSO ONLINE - METODO LUDMILLA RAISSULI:
+_Formacao completa do metodo._
+-> Direcionar para WhatsApp (91) 98134-7134
+
+FORMACAO DO FEMININO:
+_Processo terapeutico profundo de reconexao._
+-> Direcionar para WhatsApp (91) 98134-7134
+
+═══════════════════════════════════════
+REGRAS DE DIRECIONAMENTO
+═══════════════════════════════════════
+- DANCA EM GRUPO: Resolve tudo AQUI. Envia valores, envia PIX, confirma pagamento. NAO manda para WhatsApp.
+- AULA PARTICULAR: Pode iniciar aqui, mas para agendar horario direciona para (91) 98134-7134
+- TERAPIA: Apresenta valores aqui, mas para agendar direciona para (91) 98134-7134
+- JURIDICO: Direciona para (91) 98134-7134
+- CURSO ONLINE / FORMACAO: Direciona para (91) 98134-7134
+
+═══════════════════════════════════════
+PIX - ENVIAR QUANDO CLIENTE QUISER PAGAR AULA DE DANCA EM GRUPO
+═══════════════════════════════════════
+Quando a pessoa demonstrar que quer pagar/agendar aula de danca em grupo, envie:
+
+Maravilha! Segue nosso PIX para garantir sua vaga 🌸
+
+*Escola de Amor-Proprio*
+*CNPJ: 21.172.163/0001-21*
+*Valor: R$ 97,00* _(aula avulsa)_
+
+Apos o pagamento, e so enviar o comprovante aqui que ja confirmo sua vaga! 💜
+
+(Ajuste o valor se for mensalidade R$ 300 ou semestralidade R$ 250)
+
+═══════════════════════════════════════
+SOBRE A LUDMILLA RAISSULI
+═══════════════════════════════════════
+Pos-graduacao em Psicologia Positiva, Terapia Junguiana, Hipnoterapia, Metodo Louise Hay e Constelacoes Familiares. Quase 20 anos de experiencia cuidando de mulheres. Fundadora da Escola de Amor-Proprio.
+
+═══════════════════════════════════════
+CONTATO E ENDERECO
+═══════════════════════════════════════
+WhatsApp: (91) 98134-7134
+Instagram: @escoladeamorproprio
+Endereco: Tv. Dom Romualdo Coelho, 1072 - Belem/PA
+
+═══════════════════════════════════════
+PALAVRAS PROIBIDAS (nunca use)
+═══════════════════════════════════════
+gostoso, delicia, ardente, sedutora, sensual, irresistivel, excitante
+
+═══════════════════════════════════════
+CAPTURA DE LEAD (invisivel para o cliente)
+═══════════════════════════════════════
+Quando conseguir identificar o nome E a intencao da pessoa, inclua NO FINAL da sua resposta (o sistema remove automaticamente):
+
+[LEAD: nome=NOME | contato=CONTATO | interesse=INTERESSE | status=STATUS]
+
+Status possiveis:
+- CURIOSA = acabou de chegar, perguntando
+- AQUECIDA = demonstrou interesse real, pediu mais detalhes
+- PRONTA = quer agendar/pagar, pediu PIX ou confirmou
+
+PAGAMENTO: Quando a pessoa confirmar que pagou ou enviar comprovante, inclua [PAGO] no final.
+
+═══════════════════════════════════════
+COMPORTAMENTO ESPECIAL
+═══════════════════════════════════════
+- [PRIMEIRA_VEZ]: Se a mensagem comecar com isso, apresente a escola brevemente:
+  "Oi! Bem-vinda a Escola de Amor-Proprio! 🌸
+   Somos um espaco dedicado ao cuidado e empoderamento feminino aqui em Belem.
+   Em que posso te ajudar?"
+  E depois responda a pergunta normalmente.
+
+- FORA DO HORARIO (antes 8h ou depois 20h):
+  Informe que o atendimento e das 8h as 20h e que respondera pela manha.
+
+- Se a pessoa so mandar "oi", "ola", "bom dia" etc:
+  Cumprimente com carinho e pergunte como pode ajudar, mencionando brevemente os servicos:
+  "Oi, tudo bem? 🌸 Aqui e a Ana, da Escola de Amor-Proprio!
+   Posso te ajudar com informacoes sobre nossas aulas de danca, terapia, workshops e muito mais!
+   O que te trouxe ate aqui?"
+
+- DUVIDAS/OBJECOES sobre preco:
+  Seja acolhedora, destaque o valor da experiencia, mencione a aula avulsa como opcao acessivel.
+
+- PERGUNTAS SOBRE LOCAL/HORARIO:
+  Endereco: Tv. Dom Romualdo Coelho, 1072 - Belem/PA
+  Aulas de danca em grupo: sabados (confirmar horario com a equipe)
+
+═══════════════════════════════════════
+ESTRATEGIA DE VENDA
+═══════════════════════════════════════
+1. ACOLHER - Receba com entusiasmo
+2. INFORMAR - Passe TODOS os valores e opcoes
+3. CONDUZIR - Sempre sugira o proximo passo ("Quer agendar?", "Posso enviar o PIX?")
+4. FECHAR - Quando demonstrar interesse, envie o PIX imediatamente
+5. CONFIRMAR - Peca o comprovante e confirme a vaga
+
+Nunca termine uma mensagem sem uma pergunta ou convite para acao.`;
 
 // ============ IA ============
 async function chamarIA(uid, msg, plataforma) {
@@ -160,23 +288,31 @@ async function chamarIA(uid, msg, plataforma) {
   const hist = getHist(uid);
   hist[hist.length - 1] = { role: "user", content: msgIA };
 
-  let resposta = "Desculpe, tive um problema técnico. Tente novamente 🌸";
+  // Adicionar contexto de horário
+  const horaAtual = new Date().toLocaleString("pt-BR", { timeZone: "America/Belem" });
+  const horaNum = new Date().toLocaleString("pt-BR", { timeZone: "America/Belem", hour: "2-digit", hour12: false });
+
+  let resposta = "Desculpe, tive um probleminha tecnico. Tente novamente em instantes 🌸";
   try {
+    const systemWithTime = PROMPT + "\n\nHORARIO ATUAL EM BELEM: " + horaAtual + " (use para verificar se esta dentro do horario de atendimento 8h-20h)";
+
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 400, system: PROMPT, messages: getHist(uid) })
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: systemWithTime, messages: getHist(uid) })
     });
     if (res.ok) { const d = await res.json(); resposta = d.content?.[0]?.text || resposta; }
     else { console.error("Anthropic erro:", res.status); }
-  } catch(e) { console.error("IA erro:", e.message); }
+  } catch (e) { console.error("IA erro:", e.message); }
 
+  // Processar tag [PAGO]
   if (resposta.includes("[PAGO]")) {
     resposta = resposta.replace(/\[PAGO\]/g, "").trim();
     await saveLead({ ...lead, status: "PAGO", pagamento: new Date().toISOString() });
     await alertaPago(lead);
   }
 
+  // Processar tag [LEAD: ...]
   const m = resposta.match(/\[LEAD:\s*([^\]]+)\]/i);
   if (m) {
     const extras = {};
@@ -196,7 +332,17 @@ function agendarRetomada(uid, sendFn) {
   if (timers[uid]) clearTimeout(timers[uid]);
   timers[uid] = setTimeout(async () => {
     const lead = await getLead(uid);
-    if (lead && lead.status !== "PAGO") { try { await sendFn("Ainda estou aqui, caso queira continuar 🌸"); } catch(e) {} }
+    if (lead && lead.status !== "PAGO" && lead.status !== "COMPROVANTE_ENVIADO") {
+      try {
+        const msgs = [
+          "Oi! Ainda estou por aqui caso queira tirar alguma duvida 🌸",
+          "Ei! Se precisar de ajuda com alguma informacao, e so me chamar 💜",
+          "Ola! Vi que ficou interessada... posso te ajudar com algo mais? 🥰"
+        ];
+        const msg = msgs[Math.floor(Math.random() * msgs.length)];
+        await sendFn(msg);
+      } catch (e) { }
+    }
   }, 10 * 60 * 1000);
 }
 
@@ -222,7 +368,7 @@ app.post("/webhook/whatsapp", async (req, res) => {
     await send(await chamarIA(uid, msg.text.body, "whatsapp"));
     agendarRetomada(uid, send);
     res.sendStatus(200);
-  } catch(e) { console.error("WA erro:", e.message); res.sendStatus(500); }
+  } catch (e) { console.error("WA erro:", e.message); res.sendStatus(500); }
 });
 
 // ============ WEBHOOKS INSTAGRAM (@escoladeamorproprio) ============
@@ -235,7 +381,6 @@ app.post("/webhook/instagram", async (req, res) => {
   try {
     console.log("IG webhook recebido:", JSON.stringify(req.body));
     const entry = req.body.entry?.[0];
-    // Suporte a formato novo (changes) e formato antigo (messaging)
     let uid, texto;
     if (entry?.changes) {
       const change = entry.changes[0];
@@ -266,7 +411,7 @@ app.post("/webhook/instagram", async (req, res) => {
     await send(await chamarIA(uid, texto, "instagram"));
     agendarRetomada(uid, send);
     res.sendStatus(200);
-  } catch(e) { console.error("IG erro:", e.message); res.sendStatus(500); }
+  } catch (e) { console.error("IG erro:", e.message); res.sendStatus(500); }
 });
 
 // ============ WEBHOOKS INSTAGRAM2 (@ludmillaraissuli) ============
@@ -306,7 +451,7 @@ app.post("/webhook/instagram2", async (req, res) => {
     await send(await chamarIA(uid, texto, "instagram2"));
     agendarRetomada(uid, send);
     res.sendStatus(200);
-  } catch(e) { console.error("IG2 erro:", e.message); res.sendStatus(500); }
+  } catch (e) { console.error("IG2 erro:", e.message); res.sendStatus(500); }
 });
 
 // ============ ROTAS ADMIN ============
@@ -322,7 +467,7 @@ app.get("/logs", async (req, res) => {
   res.json({ totalUsuarios: resumo.length, usuarios: resumo });
 });
 app.get("/", (req, res) => {
-  res.json({ status: "Ana no ar", db: db ? "MongoDB conectado" : "sem banco" });
+  res.json({ status: "Ana no ar", db: db ? "MongoDB conectado" : "sem banco", versao: "2.0" });
 });
 
 // ============ PAINEL ============
@@ -547,7 +692,7 @@ app.get("/privacidade", (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Política de Privacidade — Escola de Amor-Próprio</title>
+<title>Politica de Privacidade - Escola de Amor-Proprio</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Georgia,serif;background:#fdf6f0;color:#1a1218;line-height:1.8}
@@ -561,21 +706,21 @@ footer{margin-top:48px;font-size:12px;color:#7a6570;border-top:1px solid #f0d5dc
 </head>
 <body>
 <div class="wrap">
-  <h1>Política de Privacidade</h1>
-  <p class="sub">Escola de Amor-Próprio — Última atualização: ${new Date().toLocaleDateString("pt-BR")}</p>
+  <h1>Politica de Privacidade</h1>
+  <p class="sub">Escola de Amor-Proprio - Ultima atualizacao: ${new Date().toLocaleDateString("pt-BR")}</p>
   <h2>1. Quem somos</h2>
-  <p>A Escola de Amor-Próprio é um Centro Integral de Cuidado com a Mulher, fundado em Belém-PA pela terapeuta Ludmilla Raissuli.</p>
+  <p>A Escola de Amor-Proprio e um Centro Integral de Cuidado com a Mulher, fundado em Belem-PA pela terapeuta Ludmilla Raissuli.</p>
   <h2>2. Quais dados coletamos</h2>
-  <p>Coletamos apenas as informações fornecidas voluntariamente durante a conversa: nome, número de telefone ou identificador da plataforma, e o conteúdo das mensagens trocadas com o assistente virtual Ana.</p>
+  <p>Coletamos apenas as informacoes fornecidas voluntariamente durante a conversa: nome, numero de telefone ou identificador da plataforma, e o conteudo das mensagens trocadas com o assistente virtual Ana.</p>
   <h2>3. Como usamos os dados</h2>
-  <p>Os dados são usados exclusivamente para melhorar o atendimento, responder dúvidas sobre nossos serviços e entrar em contato quando solicitado. Não vendemos nem compartilhamos seus dados com terceiros.</p>
-  <h2>4. Armazenamento e segurança</h2>
-  <p>As informações são armazenadas em servidores seguros e acessadas apenas pela equipe da Escola de Amor-Próprio. Você pode solicitar a exclusão dos seus dados a qualquer momento.</p>
+  <p>Os dados sao usados exclusivamente para melhorar o atendimento, responder duvidas sobre nossos servicos e entrar em contato quando solicitado. Nao vendemos nem compartilhamos seus dados com terceiros.</p>
+  <h2>4. Armazenamento e seguranca</h2>
+  <p>As informacoes sao armazenadas em servidores seguros e acessadas apenas pela equipe da Escola de Amor-Proprio. Voce pode solicitar a exclusao dos seus dados a qualquer momento.</p>
   <h2>5. Seus direitos</h2>
-  <p>Você tem direito de acessar, corrigir ou solicitar a exclusão de seus dados. Para exercer esses direitos, entre em contato pelo WhatsApp (91) 98134-7134 ou pelo e-mail escoladeamorproprio@gmail.com.</p>
+  <p>Voce tem direito de acessar, corrigir ou solicitar a exclusao de seus dados. Para exercer esses direitos, entre em contato pelo WhatsApp (91) 98134-7134 ou pelo e-mail escoladeamorproprio@gmail.com.</p>
   <h2>6. Contato</h2>
-  <p>Escola de Amor-Próprio<br>Tv. Dom Romualdo Coelho, 1072 — Belém, PA<br>WhatsApp: (91) 98134-7134<br>E-mail: escoladeamorproprio@gmail.com<br>Instagram: @escoladeamorproprio</p>
-  <footer>Esta política está em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</footer>
+  <p>Escola de Amor-Proprio<br>Tv. Dom Romualdo Coelho, 1072 - Belem, PA<br>WhatsApp: (91) 98134-7134<br>E-mail: escoladeamorproprio@gmail.com<br>Instagram: @escoladeamorproprio</p>
+  <footer>Esta politica esta em conformidade com a Lei Geral de Protecao de Dados (LGPD - Lei 13.709/2018).</footer>
 </div>
 </body>
 </html>`);
@@ -584,5 +729,5 @@ footer{margin-top:48px;font-size:12px;color:#7a6570;border-top:1px solid #f0d5dc
 // ============ START ============
 const PORT = process.env.PORT || 3000;
 conectarMongo().then(() => {
-  app.listen(PORT, () => console.log("Ana rodando na porta " + PORT));
+  app.listen(PORT, () => console.log("Ana v2.0 rodando na porta " + PORT));
 });
