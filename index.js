@@ -48,7 +48,13 @@ async function conectarMongo() {
 async function getLead(uid) { try { return await leadsCol.findOne({ userId: uid }); } catch (e) { return null; } }
 async function saveLead(l) { try { await leadsCol.updateOne({ userId: l.userId }, { $set: l }, { upsert: true }); } catch (e) { console.error("saveLead:", e.message); } }
 async function getLogs(uid) { try { const d = await logsCol.findOne({ userId: uid }); return d ? d.msgs : []; } catch (e) { return []; } }
-async function addLog(uid, role, texto, plataforma) { try { await logsCol.updateOne({ userId: uid }, { $push: { msgs: { $each: [{ role, texto, plataforma, timestamp: new Date().toISOString() }], $slice: -100 } } }, { upsert: true }); } catch (e) { } }
+async function addLog(uid, role, texto, plataforma, extras) {
+  try {
+    const entry = { role, texto, plataforma, timestamp: new Date().toISOString() };
+    if (extras) Object.assign(entry, extras);
+    await logsCol.updateOne({ userId: uid }, { $push: { msgs: { $each: [entry], $slice: -100 } } }, { upsert: true });
+  } catch (e) { }
+}
 async function getAllLeads() { try { return await leadsCol.find({}).sort({ timestamp: -1 }).toArray(); } catch (e) { return []; } }
 async function getAllLogsResumo() { try { const docs = await logsCol.find({}, { projection: { userId: 1, msgs: 1 } }).toArray(); return docs.map(d => ({ userId: d.userId, ultima: d.msgs && d.msgs.length ? d.msgs[d.msgs.length - 1].timestamp : null })); } catch (e) { return []; } }
 
@@ -67,10 +73,24 @@ function getHist(id) { if (!conversas[id]) conversas[id] = []; return conversas[
 function addMsg(id, role, content) { const h = getHist(id); h.push({ role, content }); if (h.length > 30) h.splice(0, h.length - 30); }
 
 // ============ TELEGRAM ============
+function fmtFone(n) {
+  if (!n) return "?";
+  const d = n.replace(/[^0-9]/g, "");
+  if (d.length === 13) return "(" + d.slice(2,4) + ") " + d.slice(4,9) + "-" + d.slice(9);
+  if (d.length === 12) return "(" + d.slice(2,4) + ") " + d.slice(4,8) + "-" + d.slice(8);
+  return n;
+}
+function waUrl(n) {
+  if (!n) return "";
+  const d = n.replace(/[^0-9]/g, "");
+  return d.length >= 10 ? "https://wa.me/" + d : "";
+}
+
 async function tg(texto) {
   if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
-  try { await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: texto, parse_mode: "Markdown" }) }); } catch (e) { }
+  try { await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: texto, parse_mode: "Markdown", disable_web_page_preview: true }) }); } catch (e) { }
 }
+
 async function tgFoto(url, caption) {
   if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
   try {
@@ -80,26 +100,153 @@ async function tgFoto(url, caption) {
     const hdr = Buffer.from("--" + b + "\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n" + TELEGRAM_CHAT_ID + "\r\n--" + b + "\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n" + caption + "\r\n--" + b + "\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"comprovante.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n");
     const ftr = Buffer.from("\r\n--" + b + "--\r\n");
     await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendPhoto", { method: "POST", headers: { "Content-Type": "multipart/form-data; boundary=" + b }, body: Buffer.concat([hdr, buf, ftr]) });
-  } catch (e) { await tg(caption + "\n_(imagem não encaminhada)_"); }
+  } catch (e) { await tg(caption + "\n_(imagem nao encaminhada)_"); }
 }
 
-const agora = () => new Date().toLocaleString("pt-BR");
-async function alertaNovo(l) { await tg("🌸 *NOVO CONTATO*\n\n👤 " + (l.nome || "Aguardando...") + "\n📱 " + (l.contato || "?") + "\n📲 " + (l.plataforma || "?") + "\n🕐 " + agora()); }
-async function alertaPronta(l) { await tg("🔥 *LEAD PRONTA!*\n\n👤 " + (l.nome || "?") + "\n📱 " + (l.contato || "?") + "\n💜 " + (l.interesse || "?") + "\n🕐 " + agora()); }
-async function alertaPago(l) { await tg("💰 *PAGAMENTO CONFIRMADO!*\n\n👤 " + (l.nome || "?") + "\n📱 " + (l.contato || "?") + "\n🕐 " + agora()); }
+const agora = () => new Date().toLocaleString("pt-BR", { timeZone: "America/Belem" });
 
-// ============ IMAGEM ============
+async function alertaNovo(l) {
+  const link = waUrl(l.contato);
+  await tg(
+    "🌸 *NOVO CONTATO NO WHATSAPP*\n" +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    "👤 *Nome:* " + (l.nome || "_Aguardando..._") + "\n" +
+    "📱 *Telefone:* " + fmtFone(l.contato) + "\n" +
+    "🕐 *Horario:* " + agora() + "\n" +
+    (link ? "💬 [Abrir WhatsApp](" + link + ")\n" : "") +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    "_Ana esta atendendo automaticamente_"
+  );
+}
+
+async function alertaAquecida(l) {
+  const link = waUrl(l.contato);
+  await tg(
+    "🔥 *LEAD AQUECIDA!*\n" +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    "👤 *Nome:* " + (l.nome || "?") + "\n" +
+    "📱 *Telefone:* " + fmtFone(l.contato) + "\n" +
+    "💜 *Interesse:* " + (l.interesse || "?") + "\n" +
+    "📊 *Status:* AQUECIDA\n" +
+    "🕐 " + agora() + "\n" +
+    (link ? "💬 [Abrir WhatsApp](" + link + ")\n" : "") +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    "_Demonstrou interesse real!_"
+  );
+}
+
+async function alertaPronta(l) {
+  const link = waUrl(l.contato);
+  await tg(
+    "🚀 *LEAD PRONTA PRA FECHAR!*\n" +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    "👤 *Nome:* " + (l.nome || "?") + "\n" +
+    "📱 *Telefone:* " + fmtFone(l.contato) + "\n" +
+    "💜 *Interesse:* " + (l.interesse || "?") + "\n" +
+    "📊 *Status:* PRONTA\n" +
+    "🕐 " + agora() + "\n" +
+    (link ? "💬 [Abrir WhatsApp](" + link + ")\n" : "") +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    "_Quer pagar/agendar! Ana enviou PIX._"
+  );
+}
+
+async function alertaPago(l) {
+  const link = waUrl(l.contato);
+  await tg(
+    "💰 *PAGAMENTO CONFIRMADO!*\n" +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    "👤 *Nome:* " + (l.nome || "?") + "\n" +
+    "📱 *Telefone:* " + fmtFone(l.contato) + "\n" +
+    "💜 *Interesse:* " + (l.interesse || "?") + "\n" +
+    "📊 *Status:* PAGO ✅\n" +
+    "🕐 " + agora() + "\n" +
+    (link ? "💬 [Abrir WhatsApp](" + link + ")\n" : "") +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    "_Vaga confirmada!_"
+  );
+}
+
+async function alertaMensagem(l, msgTexto, tipo) {
+  // Alerta a cada mensagem do usuario para acompanhar em tempo real
+  const link = waUrl(l.contato);
+  const tipoLabel = tipo === "text" ? "" : " [" + tipo.toUpperCase() + "]";
+  await tg(
+    "💬 *MSG RECEBIDA" + tipoLabel + "*\n" +
+    "👤 " + (l.nome || fmtFone(l.contato)) + "\n" +
+    "📱 " + fmtFone(l.contato) + "\n" +
+    "📊 " + (l.status || "CURIOSA") + "\n" +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    (msgTexto || "_[" + tipo + "]_") + "\n" +
+    "━━━━━━━━━━━━━━━━━━━━━\n" +
+    (link ? "💬 [Abrir WhatsApp](" + link + ")" : "")
+  );
+}
+
+// ============ MIDIA WHATSAPP ============
+async function getMediaUrl(mediaId) {
+  try {
+    const r = await fetch("https://graph.facebook.com/v18.0/" + mediaId, { headers: { "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN } });
+    const d = await r.json();
+    return d.url || null;
+  } catch (e) { return null; }
+}
+
 async function processarImagem(uid, imageId) {
   try {
-    const r = await fetch("https://graph.facebook.com/v18.0/" + imageId, { headers: { "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN } });
-    const d = await r.json();
+    const mediaUrl = await getMediaUrl(imageId);
     const lead = await getLead(uid) || {};
-    const caption = "📎 *COMPROVANTE*\n👤 " + (lead.nome || "?") + "\n📱 " + (lead.contato || uid) + "\n🕐 " + agora();
-    await tgFoto(d.url, caption);
+    const caption = "📎 *COMPROVANTE RECEBIDO*\n━━━━━━━━━━━━━━━━━━━━━\n👤 " + (lead.nome || "?") + "\n📱 " + fmtFone(lead.contato || uid) + "\n🕐 " + agora();
+    if (mediaUrl) await tgFoto(mediaUrl, caption);
+    else await tg(caption + "\n_(imagem nao encaminhada)_");
+    // Salvar no log com referencia de midia
+    await addLog(uid, "user", "[Imagem enviada]", "whatsapp", { tipo: "image", mediaId: imageId });
     await saveLead({ ...lead, userId: uid, status: "COMPROVANTE_ENVIADO", comprovante: new Date().toISOString() });
     await alertaPago(lead);
     return "Recebi seu comprovante! ✅\n\n*Vaga confirmada!* 🌸\n\nTe esperamos no sábado com muito carinho!\nQualquer dúvida, é só falar 💜";
   } catch (e) { return "Recebi sua imagem 🤍\n\nVou confirmar com a equipe e já te aviso!"; }
+}
+
+async function processarAudio(uid, audioId) {
+  const lead = await getLead(uid) || {};
+  await addLog(uid, "user", "[Audio enviado]", "whatsapp", { tipo: "audio", mediaId: audioId });
+  await alertaMensagem(lead, "_[Audio recebido]_", "audio");
+  return "Recebi seu audio! 🎙️\n\nPor aqui consigo te ajudar melhor por texto, pode mandar sua duvida escrita? 🌸";
+}
+
+async function processarVideo(uid, videoId) {
+  const lead = await getLead(uid) || {};
+  await addLog(uid, "user", "[Video enviado]", "whatsapp", { tipo: "video", mediaId: videoId });
+  await alertaMensagem(lead, "_[Video recebido]_", "video");
+  return "Recebi seu video! 🎬\n\nSe for um comprovante de pagamento, pode enviar como foto que fica mais facil pra eu confirmar! 🌸";
+}
+
+async function processarDocumento(uid, docId, filename) {
+  const lead = await getLead(uid) || {};
+  await addLog(uid, "user", "[Documento: " + (filename || "arquivo") + "]", "whatsapp", { tipo: "document", mediaId: docId, filename });
+  await alertaMensagem(lead, "_[Documento: " + (filename || "arquivo") + "]_", "documento");
+  return "Recebi seu documento! 📄\n\nVou encaminhar pra equipe. Qualquer coisa, e so falar! 🌸";
+}
+
+async function processarSticker(uid, stickerId) {
+  const lead = await getLead(uid) || {};
+  await addLog(uid, "user", "[Sticker]", "whatsapp", { tipo: "sticker", mediaId: stickerId });
+  return null; // Nao responde sticker, so registra
+}
+
+async function processarLocalizacao(uid, lat, lng, name) {
+  const lead = await getLead(uid) || {};
+  const label = name || (lat + "," + lng);
+  await addLog(uid, "user", "[Localizacao: " + label + "]", "whatsapp", { tipo: "location", lat, lng });
+  await alertaMensagem(lead, "_[Localizacao compartilhada: " + label + "]_", "localizacao");
+  return "Recebi sua localizacao! 📍\n\nNossa escola fica na Tv. Dom Romualdo Coelho, 1072 - Belem/PA 🌸";
+}
+
+async function processarContato(uid, contactName) {
+  const lead = await getLead(uid) || {};
+  await addLog(uid, "user", "[Contato compartilhado: " + (contactName || "?") + "]", "whatsapp", { tipo: "contact", contactName });
+  await alertaMensagem(lead, "_[Contato compartilhado: " + (contactName || "?") + "]_", "contato");
+  return "Recebi o contato! 👤\n\nObrigada por compartilhar! 🌸";
 }
 
 // ============ PROMPT ============
@@ -374,6 +521,7 @@ async function chamarIA(uid, msg, plataforma) {
 
     await saveLead({ ...lead, ...extras, userId: uid });
     if (extras.status === "PRONTA" && statusAnterior !== "PRONTA" && statusAnterior !== "PAGO") await alertaPronta({ ...lead, ...extras });
+    if (extras.status === "AQUECIDA" && statusAnterior === "CURIOSA") await alertaAquecida({ ...lead, ...extras });
     resposta = resposta.replace(m[0], "").trim();
   }
 
@@ -414,13 +562,70 @@ app.post("/webhook/whatsapp", async (req, res) => {
     if (!msg) return res.sendStatus(200);
     const uid = msg.from;
     if (!checarRate(uid)) return res.sendStatus(200);
+
     const send = async (text) => {
       await fetch("https://graph.facebook.com/v18.0/" + phoneId + "/messages", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN }, body: JSON.stringify({ messaging_product: "whatsapp", to: uid, text: { body: text } }) });
     };
-    if (msg.type === "image") { await send(await processarImagem(uid, msg.image.id)); return res.sendStatus(200); }
-    if (msg.type !== "text") return res.sendStatus(200);
-    await send(await chamarIA(uid, msg.text.body, "whatsapp"));
-    agendarRetomada(uid, send);
+
+    let resposta = null;
+
+    switch (msg.type) {
+      case "text":
+        // Alerta no Telegram com a mensagem
+        const leadAtual = await getLead(uid);
+        if (leadAtual) await alertaMensagem(leadAtual, msg.text.body, "text");
+        resposta = await chamarIA(uid, msg.text.body, "whatsapp");
+        break;
+
+      case "image":
+        resposta = await processarImagem(uid, msg.image.id);
+        break;
+
+      case "audio":
+        resposta = await processarAudio(uid, msg.audio.id);
+        break;
+
+      case "video":
+        resposta = await processarVideo(uid, msg.video.id);
+        break;
+
+      case "document":
+        resposta = await processarDocumento(uid, msg.document.id, msg.document.filename);
+        break;
+
+      case "sticker":
+        resposta = await processarSticker(uid, msg.sticker.id);
+        break;
+
+      case "location":
+        resposta = await processarLocalizacao(uid, msg.location.latitude, msg.location.longitude, msg.location.name);
+        break;
+
+      case "contacts":
+        const cName = msg.contacts?.[0]?.name?.formatted_name || "?";
+        resposta = await processarContato(uid, cName);
+        break;
+
+      case "reaction":
+        // So registra, nao responde
+        await addLog(uid, "user", "[Reacao: " + (msg.reaction?.emoji || "?") + "]", "whatsapp", { tipo: "reaction", emoji: msg.reaction?.emoji });
+        break;
+
+      default:
+        // Tipo desconhecido - registra e ignora
+        await addLog(uid, "user", "[Mensagem tipo: " + msg.type + "]", "whatsapp", { tipo: msg.type });
+        break;
+    }
+
+    if (resposta) {
+      await send(resposta);
+      // Registrar resposta da Ana no log (se nao for texto - texto ja registra no chamarIA)
+      if (msg.type !== "text") {
+        await addLog(uid, "assistant", resposta, "whatsapp");
+      }
+      agendarRetomada(uid, send);
+    }
+
     res.sendStatus(200);
   } catch (e) { console.error("WA erro:", e.message); res.sendStatus(500); }
 });
@@ -559,6 +764,7 @@ input[type=text]:focus{border-color:#c9748a}
 .mb{max-width:65%;padding:9px 12px;border-radius:14px;font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
 .mr.user .mb{background:#c9748a;color:#fff;border-bottom-right-radius:3px}
 .mr.assistant .mb{background:#fff;color:#1a1218;border-bottom-left-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.media-tag{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;background:rgba(201,116,138,.12);color:#8a3f52;margin-bottom:4px;display:inline-block}
 .mt{font-size:9px;color:#7a6570;margin:0 3px 1px}.mr.user .mt{text-align:right}
 .al{font-size:9px;color:#c9748a;font-weight:700;margin-bottom:1px;margin-left:2px}
 .emp{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#7a6570;text-align:center;padding:30px}
@@ -779,8 +985,18 @@ function abrir(uid) {
       for (var i = 0; i < lg.length; i++) {
         var m = lg[i], ia = m.role === "assistant";
         var txt = (m.texto || "").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        // Renderizar tipo de midia com icone
+        var mediaTag = "";
+        if (m.tipo === "image") mediaTag = '<div class="media-tag">📷 Imagem</div>';
+        else if (m.tipo === "audio") mediaTag = '<div class="media-tag">🎙️ Audio</div>';
+        else if (m.tipo === "video") mediaTag = '<div class="media-tag">🎬 Video</div>';
+        else if (m.tipo === "document") mediaTag = '<div class="media-tag">📄 ' + (m.filename || "Documento") + '</div>';
+        else if (m.tipo === "sticker") mediaTag = '<div class="media-tag">🩷 Sticker</div>';
+        else if (m.tipo === "location") mediaTag = '<div class="media-tag">📍 Localizacao</div>';
+        else if (m.tipo === "contact") mediaTag = '<div class="media-tag">👤 Contato</div>';
+        else if (m.tipo === "reaction") mediaTag = '<div class="media-tag">' + (m.emoji || "❤️") + ' Reacao</div>';
         h += '<div class="mg">' + (ia ? '<div class="al">Ana</div>' : '') +
-             '<div class="mr ' + m.role + '"><div class="mb">' + txt + '</div></div>' +
+             '<div class="mr ' + m.role + '"><div class="mb">' + mediaTag + txt + '</div></div>' +
              '<div class="mt">' + fh(m.timestamp) + '</div></div>';
       }
       ma.innerHTML = h; ma.scrollTop = ma.scrollHeight;
