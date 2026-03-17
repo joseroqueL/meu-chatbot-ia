@@ -297,9 +297,13 @@ PROIBIDO:
 Palavras: gostoso, delicia, ardente, sedutora, sensual, irresistivel, excitante, assistente virtual, chatbot, IA, bot
 
 CAPTURA DE LEAD — PRIORIDADE MAXIMA:
-Sempre incluir NO FINAL (sistema remove):
-[LEAD: nome=NOME | contato=CONTATO | interesse=INTERESSE | status=STATUS]
-status: CURIOSA / AQUECIDA / PRONTA
+Sempre incluir NO FINAL (sistema remove automaticamente):
+[LEAD: nome=NOME | interesse=INTERESSE | status=STATUS]
+
+- nome: so se a pessoa disser o nome (nunca invente, nunca use placeholder)
+- interesse: servico especifico mencionado
+- status: CURIOSA / AQUECIDA / PRONTA
+- NUNCA inclua campo contato, ele e capturado automaticamente pelo sistema
 Quando confirmar pagamento: inclua [PAGO] no final.
 
 PRIMEIRA MENSAGEM [PRIMEIRA_VEZ]:
@@ -347,8 +351,12 @@ async function chamarIA(uid, msg, plataforma) {
       if (nomeLimpo.length < 2 || nomeLimpo.toLowerCase() === "x" || nomeLimpo.toLowerCase() === "nome") delete extras.nome;
       else extras.nome = nomeLimpo;
     }
-    await saveLead({ ...lead, ...extras, userId: uid });
-    const leadAtualizado = { ...lead, ...extras };
+    // Nunca sobrescrever contato com placeholder
+    delete extras.contato;
+    // Garantir que o contato real (uid) seja sempre preservado
+    const contatoReal = lead.contato && lead.contato !== "user_id" && lead.contato !== "nao informado" && lead.contato !== uid ? lead.contato : uid;
+    await saveLead({ ...lead, ...extras, userId: uid, contato: contatoReal });
+    const leadAtualizado = { ...lead, ...extras, contato: contatoReal };
     if (extras.status === "PRONTA" && statusAnterior !== "PRONTA" && statusAnterior !== "PAGO") await alertaPronta(leadAtualizado);
     if (extras.status === "AQUECIDA" && statusAnterior === "CURIOSA") await alertaAquecida(leadAtualizado);
     resposta = resposta.replace(m[0], "").trim();
