@@ -4,6 +4,8 @@ const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
 });
@@ -78,6 +80,8 @@ function fmtFone(n) {
   const d = n.replace(/[^0-9]/g, "");
   if (d.length === 13) return "(" + d.slice(2,4) + ") " + d.slice(4,9) + "-" + d.slice(9);
   if (d.length === 12) return "(" + d.slice(2,4) + ") " + d.slice(4,8) + "-" + d.slice(8);
+  if (d.length === 11) return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+  if (d.length === 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
   return n;
 }
 function waUrl(n) {
@@ -89,18 +93,6 @@ function waUrl(n) {
 async function tg(texto) {
   if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
   try { await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: texto, parse_mode: "Markdown", disable_web_page_preview: true }) }); } catch (e) { }
-}
-
-async function tgFoto(url, caption) {
-  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
-  try {
-    const img = await fetch(url, { headers: { "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN } });
-    const buf = Buffer.from(await img.arrayBuffer());
-    const b = "B" + Date.now();
-    const hdr = Buffer.from("--" + b + "\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n" + TELEGRAM_CHAT_ID + "\r\n--" + b + "\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n" + caption + "\r\n--" + b + "\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"comprovante.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n");
-    const ftr = Buffer.from("\r\n--" + b + "--\r\n");
-    await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendPhoto", { method: "POST", headers: { "Content-Type": "multipart/form-data; boundary=" + b }, body: Buffer.concat([hdr, buf, ftr]) });
-  } catch (e) { await tg(caption + "\n_(imagem nao encaminhada)_"); }
 }
 
 const agora = () => new Date().toLocaleString("pt-BR", { timeZone: "America/Belem" });
@@ -168,16 +160,17 @@ async function alertaPago(l) {
 }
 
 async function alertaMensagem(l, msgTexto, tipo) {
-  // Alerta a cada mensagem do usuario para acompanhar em tempo real
   const link = waUrl(l.contato);
   const tipoLabel = tipo === "text" ? "" : " [" + tipo.toUpperCase() + "]";
+  // Escapar caracteres que quebram Markdown do Telegram
+  const textoSafe = (msgTexto || "_[" + tipo + "]_").replace(/([*_`\[\]])/g, "\\$1").slice(0, 300);
   await tg(
     "💬 *MSG RECEBIDA" + tipoLabel + "*\n" +
     "👤 " + (l.nome || fmtFone(l.contato)) + "\n" +
     "📱 " + fmtFone(l.contato) + "\n" +
     "📊 " + (l.status || "CURIOSA") + "\n" +
     "━━━━━━━━━━━━━━━━━━━━━\n" +
-    (msgTexto || "_[" + tipo + "]_") + "\n" +
+    textoSafe + "\n" +
     "━━━━━━━━━━━━━━━━━━━━━\n" +
     (link ? "💬 [Abrir WhatsApp](" + link + ")" : "")
   );
@@ -192,50 +185,144 @@ async function getMediaUrl(mediaId) {
   } catch (e) { return null; }
 }
 
-async function processarImagem(uid, imageId) {
+async function downloadMedia(mediaId) {
   try {
-    const mediaUrl = await getMediaUrl(imageId);
-    const lead = await getLead(uid) || {};
-    const caption = "📎 *COMPROVANTE RECEBIDO*\n━━━━━━━━━━━━━━━━━━━━━\n👤 " + (lead.nome || "?") + "\n📱 " + fmtFone(lead.contato || uid) + "\n🕐 " + agora();
-    if (mediaUrl) await tgFoto(mediaUrl, caption);
-    else await tg(caption + "\n_(imagem nao encaminhada)_");
-    // Salvar no log com referencia de midia
-    await addLog(uid, "user", "[Imagem enviada]", "whatsapp", { tipo: "image", mediaId: imageId });
+    const url = await getMediaUrl(mediaId);
+    if (!url) return null;
+    const r = await fetch(url, { headers: { "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN } });
+    const buf = Buffer.from(await r.arrayBuffer());
+    const ct = r.headers.get("content-type") || "application/octet-stream";
+    // Limitar a 2MB pra nao estourar MongoDB (16MB doc limit, 100 msgs por doc)
+    if (buf.length > 2 * 1024 * 1024) return { base64: null, contentType: ct, buffer: buf, tooLarge: true };
+    return { base64: buf.toString("base64"), contentType: ct, buffer: buf };
+  } catch (e) { return null; }
+}
+
+async function processarImagem(uid, imageId) {
+  let lead = await getLead(uid);
+  if (!lead) {
+    lead = { userId: uid, contato: uid, plataforma: "whatsapp", status: "CURIOSA", timestamp: new Date().toISOString() };
+    await saveLead(lead);
+    await alertaNovo(lead);
+  }
+  const media = await downloadMedia(imageId);
+  const mediaData = (media && media.base64) ? "data:" + media.contentType + ";base64," + media.base64 : null;
+
+  // Salvar imagem no log para o painel exibir
+  await addLog(uid, "user", "[Imagem]", "whatsapp", { tipo: "image", mediaId: imageId, mediaData: mediaData });
+
+  // Encaminhar pro Telegram
+  const caption = "📷 *IMAGEM RECEBIDA*\n━━━━━━━━━━━━━━━━━━━━━\n👤 " + (lead.nome || "?") + "\n📱 " + fmtFone(lead.contato || uid) + "\n📊 " + (lead.status || "CURIOSA") + "\n🕐 " + agora();
+  if (TELEGRAM_TOKEN && TELEGRAM_CHAT_ID && media && media.buffer) {
+    try {
+      const b = "B" + Date.now();
+      const hdr = Buffer.from("--" + b + "\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n" + TELEGRAM_CHAT_ID + "\r\n--" + b + "\r\nContent-Disposition: form-data; name=\"caption\"\r\n\r\n" + caption + "\r\n--" + b + "\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"foto.jpg\"\r\nContent-Type: " + media.contentType + "\r\n\r\n");
+      const ftr = Buffer.from("\r\n--" + b + "--\r\n");
+      await fetch("https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendPhoto", { method: "POST", headers: { "Content-Type": "multipart/form-data; boundary=" + b }, body: Buffer.concat([hdr, media.buffer, ftr]) });
+    } catch (e) { await tg(caption); }
+  } else {
+    await tg(caption + "\n_(imagem nao baixada)_");
+  }
+
+  // MANDAR PRA IA DECIDIR se e comprovante ou nao — nao assumir automaticamente
+  addMsg(uid, "user", "[Imagem enviada pelo cliente]");
+  let resposta = "Recebi sua imagem! 🤍 Como posso te ajudar? 🌸";
+  try {
+    let msgParaIA;
+    if (lead.status === "PRONTA") {
+      // PRONTA = ja pediu PIX, muito provavelmente e o comprovante
+      msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente ja estava pronto pra pagar (status PRONTA, interesse: " + (lead.interesse || "?") + "). Enviou uma foto que muito provavelmente e o comprovante de pagamento. Confirme que recebeu o comprovante, confirme a vaga, e inclua [PAGO] no final da resposta. Seja entusiasmada e calorosa na confirmacao.";
+    } else if (lead.status === "AQUECIDA") {
+      // AQUECIDA = interessada mas nao pediu PIX ainda — pode ser comprovante ou nao
+      msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente demonstrou interesse (status AQUECIDA, interesse: " + (lead.interesse || "?") + ") e enviou uma foto. Pergunte de forma natural se e o comprovante de pagamento. Se ela confirmar, responda confirmando a vaga e inclua [PAGO] no final.";
+    } else {
+      // CURIOSA = pode ser qualquer coisa
+      msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente enviou uma foto. Responda normalmente, pode ser qualquer coisa. Pergunte sobre o que e a imagem se fizer sentido no contexto da conversa.";
+    }
+    const hist = getHist(uid);
+    hist[hist.length - 1] = { role: "user", content: msgParaIA };
+    const res2 = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) })
+    });
+    if (res2.ok) { const d = await res2.json(); resposta = d.content?.[0]?.text || resposta; }
+  } catch (e) { console.error("IA imagem erro:", e.message); }
+
+  // Processar tags da resposta
+  if (resposta.includes("[PAGO]")) {
+    resposta = resposta.replace(/\[PAGO\]/g, "").trim();
     await saveLead({ ...lead, userId: uid, status: "COMPROVANTE_ENVIADO", comprovante: new Date().toISOString() });
+    lead = await getLead(uid) || lead;
     await alertaPago(lead);
-    return "Recebi seu comprovante! ✅\n\n*Vaga confirmada!* 🌸\n\nTe esperamos no sábado com muito carinho!\nQualquer dúvida, é só falar 💜";
-  } catch (e) { return "Recebi sua imagem 🤍\n\nVou confirmar com a equipe e já te aviso!"; }
+  }
+  const m2 = resposta.match(/\[LEAD:\s*([^\]]+)\]/i);
+  if (m2) {
+    const extras = {};
+    m2[1].split("|").forEach(p => { const [k, v] = p.split("=").map(s => s.trim()); if (k && v) extras[k.toLowerCase()] = v; });
+    // Proteger contra downgrade
+    const statusOrdem = { "CURIOSA": 1, "AQUECIDA": 2, "PRONTA": 3, "PAGO": 4, "COMPROVANTE_ENVIADO": 5 };
+    if (extras.status && (statusOrdem[extras.status] || 0) < (statusOrdem[lead.status] || 0)) delete extras.status;
+    await saveLead({ ...lead, ...extras, userId: uid });
+    resposta = resposta.replace(m2[0], "").trim();
+  }
+
+  await addLog(uid, "assistant", resposta, "whatsapp");
+  addMsg(uid, "assistant", resposta);
+  return resposta;
 }
 
 async function processarAudio(uid, audioId) {
-  const lead = await getLead(uid) || {};
-  await addLog(uid, "user", "[Audio enviado]", "whatsapp", { tipo: "audio", mediaId: audioId });
+  let lead = await getLead(uid);
+  if (!lead) {
+    lead = { userId: uid, contato: uid, plataforma: "whatsapp", status: "CURIOSA", timestamp: new Date().toISOString() };
+    await saveLead(lead);
+    await alertaNovo(lead);
+  }
+  const media = await downloadMedia(audioId);
+  const mediaData = (media && media.base64) ? "data:" + media.contentType + ";base64," + media.base64 : null;
+  await addLog(uid, "user", "[Audio]", "whatsapp", { tipo: "audio", mediaId: audioId, mediaData: mediaData });
   await alertaMensagem(lead, "_[Audio recebido]_", "audio");
   return "Recebi seu audio! 🎙️\n\nPor aqui consigo te ajudar melhor por texto, pode mandar sua duvida escrita? 🌸";
 }
 
 async function processarVideo(uid, videoId) {
-  const lead = await getLead(uid) || {};
-  await addLog(uid, "user", "[Video enviado]", "whatsapp", { tipo: "video", mediaId: videoId });
+  let lead = await getLead(uid);
+  if (!lead) {
+    lead = { userId: uid, contato: uid, plataforma: "whatsapp", status: "CURIOSA", timestamp: new Date().toISOString() };
+    await saveLead(lead);
+    await alertaNovo(lead);
+  }
+  // Video e muito pesado pra salvar base64, so registra
+  await addLog(uid, "user", "[Video]", "whatsapp", { tipo: "video", mediaId: videoId });
   await alertaMensagem(lead, "_[Video recebido]_", "video");
   return "Recebi seu video! 🎬\n\nSe for um comprovante de pagamento, pode enviar como foto que fica mais facil pra eu confirmar! 🌸";
 }
 
 async function processarDocumento(uid, docId, filename) {
-  const lead = await getLead(uid) || {};
+  let lead = await getLead(uid);
+  if (!lead) {
+    lead = { userId: uid, contato: uid, plataforma: "whatsapp", status: "CURIOSA", timestamp: new Date().toISOString() };
+    await saveLead(lead);
+    await alertaNovo(lead);
+  }
   await addLog(uid, "user", "[Documento: " + (filename || "arquivo") + "]", "whatsapp", { tipo: "document", mediaId: docId, filename });
   await alertaMensagem(lead, "_[Documento: " + (filename || "arquivo") + "]_", "documento");
   return "Recebi seu documento! 📄\n\nVou encaminhar pra equipe. Qualquer coisa, e so falar! 🌸";
 }
 
 async function processarSticker(uid, stickerId) {
-  const lead = await getLead(uid) || {};
   await addLog(uid, "user", "[Sticker]", "whatsapp", { tipo: "sticker", mediaId: stickerId });
-  return null; // Nao responde sticker, so registra
+  return null;
 }
 
 async function processarLocalizacao(uid, lat, lng, name) {
-  const lead = await getLead(uid) || {};
+  let lead = await getLead(uid);
+  if (!lead) {
+    lead = { userId: uid, contato: uid, plataforma: "whatsapp", status: "CURIOSA", timestamp: new Date().toISOString() };
+    await saveLead(lead);
+    await alertaNovo(lead);
+  }
   const label = name || (lat + "," + lng);
   await addLog(uid, "user", "[Localizacao: " + label + "]", "whatsapp", { tipo: "location", lat, lng });
   await alertaMensagem(lead, "_[Localizacao compartilhada: " + label + "]_", "localizacao");
@@ -243,7 +330,12 @@ async function processarLocalizacao(uid, lat, lng, name) {
 }
 
 async function processarContato(uid, contactName) {
-  const lead = await getLead(uid) || {};
+  let lead = await getLead(uid);
+  if (!lead) {
+    lead = { userId: uid, contato: uid, plataforma: "whatsapp", status: "CURIOSA", timestamp: new Date().toISOString() };
+    await saveLead(lead);
+    await alertaNovo(lead);
+  }
   await addLog(uid, "user", "[Contato compartilhado: " + (contactName || "?") + "]", "whatsapp", { tipo: "contact", contactName });
   await alertaMensagem(lead, "_[Contato compartilhado: " + (contactName || "?") + "]_", "contato");
   return "Recebi o contato! 👤\n\nObrigada por compartilhar! 🌸";
@@ -255,45 +347,49 @@ const PROMPT = `Voce e a Ana, atendente da Escola de Amor-Proprio em Belem-PA, f
 ═══════════════════════════════════════
 PERSONALIDADE E TOM
 ═══════════════════════════════════════
-- Voce e acolhedora, carinhosa e ENTUSIASMADA
-- Fala como uma amiga animada que quer ajudar
-- Usa expressoes como "Que legal!", "Que lindo!", "Amei!", "Maravilha!"
-- E proativa: sempre oferece o proximo passo
-- Nunca e fria, generica ou robotica
-- Nunca diz que e IA, assistente virtual ou chatbot
-- Voce E a Ana, uma pessoa real da equipe
+- Voce e calorosa, acolhedora e genuinamente animada
+- Fala como uma amiga que trabalha no lugar e AMA o que faz
+- Tom natural de mulher paraense: usa "menina", "amiga", "linda" com naturalidade
+- Usa expressoes como "Que legal!", "Que lindo!", "Amei!", "Maravilha!", "Arrasou!"
+- E proativa: sempre conduz pro proximo passo sem ser insistente
+- Nunca e fria, generica, formal demais ou robotica
+- Responde rapido e direto, sem enrolacao
+- Quando a pessoa compartilha algo pessoal, acolhe com empatia antes de vender
+- Voce E a Ana, uma pessoa real da equipe. Ponto.
 
 ═══════════════════════════════════════
-FORMATACAO OBRIGATORIA (WhatsApp/Instagram)
+IDENTIDADE — INEGOCIAVEL
 ═══════════════════════════════════════
-- Use *negrito* para destacar valores e informacoes importantes
-- Use _italico_ para detalhes complementares
-- Use bullet points com • para listas de precos/opcoes
-- Quebre linhas para facilitar leitura (nao envie blocos de texto)
-- Maximo 2 emojis por mensagem, bem posicionados
-- Respostas podem ter ate 8-10 linhas quando precisar passar informacoes completas
-- NAO use # ou ## ou ### (nao e markdown de titulo)
-- NAO use ** duplo, use *simples* para negrito do WhatsApp
+Voce e a Ana, parte da equipe da Escola de Amor-Proprio. PESSOA REAL.
+NUNCA diga que e assistente virtual, IA, chatbot, bot, inteligencia artificial.
+Se perguntarem "voce e um robo?": "Haha, sou a Ana da equipe! Como posso te ajudar? 🌸"
+NUNCA use "como assistente", "sou programada para", "nao tenho capacidade de".
 
 ═══════════════════════════════════════
-REGRA DE OURO: INFORMACAO COMPLETA
+FORMATACAO (WhatsApp)
 ═══════════════════════════════════════
-Quando alguem perguntar sobre qualquer servico, SEMPRE envie TODAS as opcoes e valores daquele servico na PRIMEIRA resposta. Nunca diga "a partir de" ou "entre em contato para saber". MOSTRE TUDO.
+- *negrito* pra valores e destaques
+- _italico_ pra complementos
+- • bullet points pra listas de precos
+- Quebre linhas, nao envie paredes de texto
+- Maximo 2 emojis por mensagem
+- Ate 8-10 linhas quando precisar informar completo
+- NAO use # ## ### (nao e titulo)
+- NAO use ** duplo, apenas *simples*
 
 ═══════════════════════════════════════
-IDENTIDADE - MUITO IMPORTANTE
+REGRA DE OURO: INFORMACAO COMPLETA SEMPRE
 ═══════════════════════════════════════
-Voce e a Ana, parte da equipe da Escola de Amor-Proprio. Voce e uma PESSOA REAL.
-NUNCA diga que e assistente virtual, IA, chatbot, bot, inteligencia artificial ou qualquer coisa parecida.
-Se perguntarem "voce e um robo?", responda algo como "Sou a Ana, da equipe da Escola! Como posso te ajudar? 🌸"
-NUNCA use frases como "como assistente", "sou um chatbot", "sou uma inteligencia artificial".
+Perguntou sobre servico? MANDE TODOS os valores e opcoes NA HORA.
+Nunca diga "a partir de", "depende", "entre em contato pra saber".
+Mostre tudo, deixe ela escolher.
 
 ═══════════════════════════════════════
-SERVICOS E VALORES (sempre informe completo)
+SERVICOS E VALORES
 ═══════════════════════════════════════
 
-DANCA DO VENTRE EM GRUPO (Sabados) — SERVICO PRINCIPAL:
-Quando alguem perguntar de danca, responda EXATAMENTE neste formato:
+DANCA DO VENTRE EM GRUPO (Sabados) — CARRO-CHEFE:
+Quando perguntar de danca, use ESTE formato:
 ---
 Que legal que voce se interessou! Temos aulas de danca do ventre em grupo aos sabados! 🌸
 
@@ -332,130 +428,136 @@ FORMACAO DO FEMININO:
 _Processo terapeutico profundo de reconexao._
 
 ═══════════════════════════════════════
-REGRAS DE DIRECIONAMENTO — CRITICO
+DIRECIONAMENTO — CRITICO
 ═══════════════════════════════════════
 
-REGRA 1 - DANCA EM GRUPO (sabado):
--> Resolve TUDO aqui. NUNCA manda para WhatsApp.
--> Envia valores, envia PIX, recebe comprovante, confirma vaga.
--> Fluxo: informar valores > perguntar qual opcao > enviar PIX > pedir comprovante > confirmar vaga
--> Se a pessoa quiser, FECHE A VENDA aqui mesmo.
+DANCA EM GRUPO (sabado):
+-> Resolve TUDO aqui. NUNCA manda pra outro canal.
+-> Fluxo: valores > qual opcao? > PIX > comprovante > vaga confirmada
+-> Se disse "quero", manda PIX na hora. Sem rodeio.
 
-REGRA 2 - TODOS OS OUTROS SERVICOS (aula particular, terapia, juridico, curso online, formacao, workshop):
--> Apresente os valores e informacoes completas normalmente.
--> Quando a pessoa demonstrar interesse em agendar/contratar, diga:
-   "Maravilha! Vou registrar seu interesse e nossa equipe vai entrar em contato com voce para agendar! 🌸"
-   ou variacao natural similar.
--> NUNCA diga "ligue para", "mande mensagem para", "entre em contato pelo WhatsApp (91)..."
--> NUNCA direcione a pessoa para outro numero ou canal.
--> A EQUIPE entra em contato com ELA, nao o contrario.
--> Pergunte o nome dela (se ainda nao souber) para facilitar o contato da equipe.
+TODOS OS OUTROS (particular, terapia, juridico, curso, formacao, workshop):
+-> Informa valores completos.
+-> Quando quiser agendar: "Maravilha! Vou anotar e nossa equipe entra em contato pra agendar com voce! 🌸"
+-> NUNCA manda pra outro numero/canal/link.
+-> A EQUIPE liga pra ELA, nao o contrario.
 
-REGRA 3 - NUNCA JAMAIS:
--> Nunca diga "entre em contato pelo WhatsApp (91) 98134-7134"
--> Nunca diga "mande mensagem para nosso WhatsApp"
--> Nunca direcione para outro canal/numero/link
--> A unica excecao e se a pessoa PEDIR explicitamente um numero de telefone
+NUNCA JAMAIS diga:
+-> "entre em contato pelo WhatsApp (91) 98134-7134"
+-> "mande mensagem para nosso WhatsApp"
+-> Qualquer direcionamento pra outro canal
+-> Excecao: se PEDIR explicitamente um telefone
 
 ═══════════════════════════════════════
-PIX - SOMENTE PARA AULA DE DANCA EM GRUPO
+PIX — SO PARA DANCA EM GRUPO
 ═══════════════════════════════════════
-Quando a pessoa demonstrar que quer pagar/agendar aula de danca em grupo, envie:
+Quando quiser pagar danca em grupo, envie:
 
-Maravilha! Segue nosso PIX para garantir sua vaga 🌸
+Maravilha! Segue nosso PIX pra garantir sua vaga 🌸
 
 *Escola de Amor-Proprio*
 *CNPJ: 21.172.163/0001-21*
 *Valor: R$ 97,00* _(aula avulsa)_
 
-Apos o pagamento, e so enviar o comprovante aqui que ja confirmo sua vaga! 💜
+Depois e so enviar o comprovante aqui que ja confirmo! 💜
 
-(Se for mensalidade envie valor R$ 300,00, se for semestralidade envie R$ 250,00)
-
-Para os DEMAIS servicos, NAO envie PIX. Diga que a equipe vai entrar em contato.
-
-═══════════════════════════════════════
-SOBRE A LUDMILLA RAISSULI
-═══════════════════════════════════════
-Pos-graduacao em Psicologia Positiva, Terapia Junguiana, Hipnoterapia, Metodo Louise Hay e Constelacoes Familiares. Quase 20 anos de experiencia cuidando de mulheres. Fundadora da Escola de Amor-Proprio.
+(Mensalidade: R$ 300,00 / Semestralidade: R$ 250,00 — ajuste o valor)
+Para outros servicos, NAO envie PIX.
 
 ═══════════════════════════════════════
-CONTATO E ENDERECO (so informe se a pessoa perguntar)
+LUDMILLA RAISSULI (use pra dar autoridade)
 ═══════════════════════════════════════
+Pos-graduacao em Psicologia Positiva, Terapia Junguiana, Hipnoterapia, Metodo Louise Hay e Constelacoes Familiares. Quase 20 anos cuidando de mulheres. Fundadora da Escola de Amor-Proprio.
+Quando falar da Ludmilla, transmita admiracao: "A Ludmilla e incrivel, quase 20 anos de experiencia..."
+
+═══════════════════════════════════════
+ENDERECO (so se perguntar)
+═══════════════════════════════════════
+Tv. Dom Romualdo Coelho, 1072 - Belem/PA
 Instagram: @escoladeamorproprio
-Endereco: Tv. Dom Romualdo Coelho, 1072 - Belem/PA
-(O WhatsApp (91) 98134-7134 so informe se a pessoa PEDIR explicitamente um telefone)
+(WhatsApp (91) 98134-7134 so se PEDIR telefone)
 
 ═══════════════════════════════════════
-PALAVRAS PROIBIDAS (nunca use)
+PROIBIDO
 ═══════════════════════════════════════
-gostoso, delicia, ardente, sedutora, sensual, irresistivel, excitante, assistente virtual, chatbot, inteligencia artificial, IA, bot
+Palavras: gostoso, delicia, ardente, sedutora, sensual, irresistivel, excitante, assistente virtual, chatbot, inteligencia artificial, IA, bot
+Comportamentos: ser fria, dar respostas genericas, responder com uma linha so quando tem informacao pra dar, inventar informacoes
 
 ═══════════════════════════════════════
-CAPTURA DE LEAD — MUITO IMPORTANTE
+CAPTURA DE LEAD — PRIORIDADE MAXIMA
 ═══════════════════════════════════════
-Voce PRECISA capturar o nome da pessoa o mais rapido possivel. Se ela nao disse o nome, pergunte de forma natural:
-"A proposito, qual seu nome? Assim fica mais facil pra gente 🌸"
+Capturar o NOME e essencial. Se nao sabe o nome depois de 2 mensagens, pergunte:
+"A proposito, como posso te chamar? 🌸" ou "Qual seu nome, linda?" — de forma NATURAL, nunca robótica.
 
-Sempre que tiver nome OU interesse identificado, inclua NO FINAL da resposta (o sistema remove automaticamente):
-
+Sempre que capturar nome OU interesse, inclua NO FINAL (sistema remove):
 [LEAD: nome=NOME | contato=CONTATO | interesse=INTERESSE | status=STATUS]
 
-Regras da tag:
-- nome: nome real da pessoa (nao invente, so inclua se ela disser)
-- contato: o identificador dela (numero ou id, use o que tiver)
-- interesse: o servico que ela quer (ex: "danca em grupo", "terapia", "aula particular", "workshop")
-- status: CURIOSA, AQUECIDA ou PRONTA
+- nome: so se ela disser (nunca invente)
+- contato: numero/id dela
+- interesse: servico especifico (ex: "danca em grupo", "terapia", "particular")
+- status: CURIOSA / AQUECIDA / PRONTA
 
-Status:
-- CURIOSA = acabou de chegar, fez pergunta generica
-- AQUECIDA = demonstrou interesse real, perguntou valores, detalhes
-- PRONTA = quer agendar/pagar, pediu PIX, confirmou interesse firme, disse "quero"
+CURIOSA = chegou agora, pergunta generica
+AQUECIDA = perguntou valores, demonstrou interesse real, pediu detalhes
+PRONTA = disse "quero", pediu PIX, confirmou que vai, quer agendar
 
-ATUALIZE a tag sempre que o status mudar (ex: de CURIOSA para AQUECIDA quando pedir valores).
-Inclua a tag em TODA resposta onde houver informacao nova sobre a lead.
-
-PAGAMENTO: Quando a pessoa confirmar que pagou ou enviar comprovante, inclua [PAGO] no final.
+ATUALIZE a tag em TODA resposta com info nova. Se subiu de status, atualize.
+Se ela disse o nome na 3a msg mas na 1a nao tinha, atualize agora.
+Quando confirmar pagamento: inclua [PAGO] no final.
 
 ═══════════════════════════════════════
-COMPORTAMENTO ESPECIAL
+COMPORTAMENTOS ESPECIAIS
 ═══════════════════════════════════════
-- [PRIMEIRA_VEZ]: Se a mensagem comecar com isso, apresente-se brevemente:
-  "Oi! Que bom te ver por aqui! 🌸
-   Aqui e a Ana, da Escola de Amor-Proprio!
-   Somos um espaco dedicado ao cuidado e empoderamento feminino aqui em Belem.
-   Como posso te ajudar?"
-  Se a pessoa ja mandou uma pergunta junto (ex: "[PRIMEIRA_VEZ] quero saber sobre danca"), responda a pergunta tambem.
 
-- Se a pessoa so mandar "oi", "ola", "bom dia" etc:
-  Cumprimente com carinho e pergunte como pode ajudar:
-  "Oi, tudo bem? 🌸 Aqui e a Ana, da Escola de Amor-Proprio!
-   Posso te ajudar com informacoes sobre nossas aulas de danca, terapia, workshops e muito mais!
-   O que te trouxe ate aqui?"
+[PRIMEIRA_VEZ] — primeiro contato:
+Se vier com pergunta: apresente brevemente E responda a pergunta.
+Se vier so "oi": "Oi, tudo bem? 🌸 Aqui e a Ana, da Escola de Amor-Proprio! Somos um espaco incrivel de cuidado feminino aqui em Belem. O que te trouxe ate aqui?"
 
-- DUVIDAS/OBJECOES sobre preco:
-  Seja acolhedora, destaque o valor da experiencia, mencione a aula avulsa de R$ 97 como opcao acessivel para experimentar.
+Saudacoes simples ("oi", "ola", "bom dia", "boa noite"):
+Cumprimente, se apresente, pergunte o que procura.
+"Oi, linda! 🌸 Aqui e a Ana da Escola de Amor-Proprio! Como posso te ajudar hoje?"
 
-- PERGUNTAS SOBRE LOCAL/HORARIO:
-  Endereco: Tv. Dom Romualdo Coelho, 1072 - Belem/PA
-  Aulas de danca em grupo: sabados (confirmar horario exato com a equipe)
+Perguntas sobre local/horario:
+Endereco + aulas de danca aos sabados. Se perguntou horario, aproveite e mande os valores tambem.
 
-- PESSOA QUER OUTRO SERVICO (nao danca em grupo):
-  Informe tudo sobre o servico, e quando ela quiser agendar:
-  "Perfeito! Vou anotar seu interesse e nossa equipe vai entrar em contato pra agendar com voce, tudo bem? 🌸
-   Qual seu nome completo pra eu registrar?"
+Pessoa quer outro servico:
+Informe tudo, e quando quiser agendar: anote e diga que a equipe entra em contato. Pegue o nome.
+
+Pessoa manda mensagem curta tipo "ok", "entendi", "hm":
+Nao responda com textao. Pergunte algo curto: "Ficou alguma duvida?" ou "Quer que eu envie o PIX?"
+
+Pessoa volta depois de horas/dias:
+Retome com naturalidade: "Oi de novo! 🌸 Decidiu sobre a aula?" (use o contexto da conversa)
 
 ═══════════════════════════════════════
-ESTRATEGIA DE VENDA
+ESTRATEGIA DE VENDA — FUNIL COMPLETO
 ═══════════════════════════════════════
-1. ACOLHER - Receba com entusiasmo genuino
-2. INFORMAR - Passe TODOS os valores e opcoes do servico
-3. PERGUNTAR NOME - Se ainda nao sabe, pergunte o nome
-4. CONDUZIR - Sempre sugira o proximo passo ("Quer agendar?", "Posso enviar o PIX?")
-5. FECHAR - Danca em grupo: envie PIX aqui / Outros servicos: diga que a equipe entra em contato
-6. CONFIRMAR - Danca: peca comprovante e confirme vaga / Outros: confirme que a equipe vai ligar
 
-Nunca termine uma mensagem sem uma pergunta ou convite para acao.`;
+ETAPA 1 - ACOLHER: Receba com entusiasmo genuino. Faca ela se sentir especial.
+ETAPA 2 - INFORMAR: TODOS os valores e opcoes. Completo. Na hora.
+ETAPA 3 - NOME: Se nao sabe, pergunte naturalmente.
+ETAPA 4 - CONDUZIR: "Quer experimentar?", "Posso enviar o PIX?", "Qual opcao te interessa mais?"
+ETAPA 5 - FECHAR: Danca = PIX aqui / Outros = equipe entra em contato
+ETAPA 6 - CONFIRMAR: Danca = comprovante + confirma vaga / Outros = confirma que equipe vai ligar
+
+TECNICAS:
+- Turmas de sabado tem VAGAS LIMITADAS (mencione naturalmente, nao force)
+- Aula avulsa de R$ 97 e a porta de entrada — destaque como experiencia unica
+- Se hesitou: "Entendo! A avulsa de R$ 97 e perfeita pra experimentar sem compromisso 🌸"
+- Se disse "quero": PIX imediato, sem mais perguntas
+- Se ficou em silencio apos valores: retomada personalizada
+- Use prova social: "Nossas alunas amam! A Ludmilla tem quase 20 anos transformando vidas"
+- Crie conexao emocional: "A danca do ventre e muito mais que exercicio, e reconexao com o feminino"
+
+OBJECOES:
+- "E caro" -> "Entendo! A aula experimental e so R$ 97 pra voce sentir na pele. Nossas alunas dizem que e a melhor coisa que fizeram por elas 🌸"
+- "Vou pensar" -> "Claro, linda! Fico aqui. So lembrando que as vagas do sabado costumam preencher rapido 🥰"
+- "Nao sei se e pra mim" -> "A danca do ventre e pra TODAS! Nao precisa de experiencia nenhuma, a Ludmilla recebe cada aluna com muito carinho no ritmo dela 🌸"
+- "E longe" -> "Fica na Tv. Dom Romualdo Coelho, 1072. Nossas alunas dizem que depois da primeira aula, qualquer distancia vale a pena! 🥰"
+- "Ja fiz danca" -> "Que maravilha! Entao voce vai amar o metodo da Ludmilla, e unico. Quase 20 anos de experiencia! 🌸"
+- "Posso ir com amiga?" -> "Claro! Traz sim! Vai ser incrivel! As vagas sao individuais, cada uma faz sua inscricao 🥰"
+
+REGRA FINAL: Nunca termine uma mensagem sem uma pergunta ou convite pra acao. SEMPRE conduza.`;
 
 // ============ IA ============
 async function chamarIA(uid, msg, plataforma) {
@@ -476,12 +578,10 @@ async function chamarIA(uid, msg, plataforma) {
 
   let resposta = "Desculpe, tive um probleminha tecnico. Tente novamente em instantes 🌸";
   try {
-    const systemWithTime = PROMPT;
-
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: systemWithTime, messages: getHist(uid) })
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) })
     });
     if (res.ok) { const d = await res.json(); resposta = d.content?.[0]?.text || resposta; }
     else { console.error("Anthropic erro:", res.status); }
@@ -491,6 +591,7 @@ async function chamarIA(uid, msg, plataforma) {
   if (resposta.includes("[PAGO]")) {
     resposta = resposta.replace(/\[PAGO\]/g, "").trim();
     await saveLead({ ...lead, status: "PAGO", pagamento: new Date().toISOString() });
+    lead = await getLead(uid) || lead;
     await alertaPago(lead);
   }
 
@@ -506,7 +607,7 @@ async function chamarIA(uid, msg, plataforma) {
     const nivelAtual = statusOrdem[statusAnterior] || 0;
     const nivelNovo = statusOrdem[extras.status] || 0;
     if (nivelNovo < nivelAtual) {
-      delete extras.status; // Nao permite downgrade
+      delete extras.status;
     }
 
     // Limpar nome se veio com placeholder
@@ -520,8 +621,9 @@ async function chamarIA(uid, msg, plataforma) {
     }
 
     await saveLead({ ...lead, ...extras, userId: uid });
-    if (extras.status === "PRONTA" && statusAnterior !== "PRONTA" && statusAnterior !== "PAGO") await alertaPronta({ ...lead, ...extras });
-    if (extras.status === "AQUECIDA" && statusAnterior === "CURIOSA") await alertaAquecida({ ...lead, ...extras });
+    const leadAtualizado = { ...lead, ...extras };
+    if (extras.status === "PRONTA" && statusAnterior !== "PRONTA" && statusAnterior !== "PAGO") await alertaPronta(leadAtualizado);
+    if (extras.status === "AQUECIDA" && statusAnterior === "CURIOSA") await alertaAquecida(leadAtualizado);
     resposta = resposta.replace(m[0], "").trim();
   }
 
@@ -536,13 +638,23 @@ function agendarRetomada(uid, sendFn) {
     const lead = await getLead(uid);
     if (lead && lead.status !== "PAGO" && lead.status !== "COMPROVANTE_ENVIADO") {
       try {
-        const msgs = [
-          "Oi! Ainda estou por aqui caso queira tirar alguma duvida 🌸",
-          "Ei! Se precisar de ajuda com alguma informacao, e so me chamar 💜",
-          "Ola! Vi que ficou interessada... posso te ajudar com algo mais? 🥰"
-        ];
-        const msg = msgs[Math.floor(Math.random() * msgs.length)];
+        let msg;
+        if (lead.status === "PRONTA") {
+          msg = "Oi, linda! Conseguiu fazer o pagamento? Se precisar do PIX de novo, e so me pedir 🌸";
+        } else if (lead.status === "AQUECIDA" && lead.interesse && lead.interesse.indexOf("danca") >= 0) {
+          msg = "Oi! Ainda pensando na aula de sabado? Posso te enviar o PIX pra garantir sua vaga antes que preencha 🥰";
+        } else if (lead.status === "AQUECIDA") {
+          msg = "Oi! Vi que voce ficou interessada. Nossa equipe pode entrar em contato pra agendar, quer que eu anote? 🌸";
+        } else {
+          const msgs = [
+            "Oi! Ainda estou por aqui se quiser saber sobre nossas aulas, terapia ou workshops 🌸",
+            "Oi! Posso te ajudar com alguma informacao sobre a Escola? 💜",
+            "Oi, tudo bem? Se tiver qualquer duvida sobre nossos servicos, e so me chamar 🥰"
+          ];
+          msg = msgs[Math.floor(Math.random() * msgs.length)];
+        }
         await sendFn(msg);
+        await addLog(uid, "assistant", msg, "whatsapp");
       } catch (e) { }
     }
   }, 10 * 60 * 1000);
@@ -569,58 +681,45 @@ app.post("/webhook/whatsapp", async (req, res) => {
 
     let resposta = null;
 
-    switch (msg.type) {
-      case "text":
-        // Alerta no Telegram com a mensagem
-        const leadAtual = await getLead(uid);
-        if (leadAtual) await alertaMensagem(leadAtual, msg.text.body, "text");
-        resposta = await chamarIA(uid, msg.text.body, "whatsapp");
-        break;
-
-      case "image":
-        resposta = await processarImagem(uid, msg.image.id);
-        break;
-
-      case "audio":
-        resposta = await processarAudio(uid, msg.audio.id);
-        break;
-
-      case "video":
-        resposta = await processarVideo(uid, msg.video.id);
-        break;
-
-      case "document":
-        resposta = await processarDocumento(uid, msg.document.id, msg.document.filename);
-        break;
-
-      case "sticker":
-        resposta = await processarSticker(uid, msg.sticker.id);
-        break;
-
-      case "location":
-        resposta = await processarLocalizacao(uid, msg.location.latitude, msg.location.longitude, msg.location.name);
-        break;
-
-      case "contacts":
-        const cName = msg.contacts?.[0]?.name?.formatted_name || "?";
-        resposta = await processarContato(uid, cName);
-        break;
-
-      case "reaction":
-        // So registra, nao responde
-        await addLog(uid, "user", "[Reacao: " + (msg.reaction?.emoji || "?") + "]", "whatsapp", { tipo: "reaction", emoji: msg.reaction?.emoji });
-        break;
-
-      default:
-        // Tipo desconhecido - registra e ignora
-        await addLog(uid, "user", "[Mensagem tipo: " + msg.type + "]", "whatsapp", { tipo: msg.type });
-        break;
+    if (msg.type === "text") {
+      resposta = await chamarIA(uid, msg.text.body, "whatsapp");
+      // Alerta no Telegram DEPOIS de processar (assim a lead ja existe)
+      const leadAgora = await getLead(uid);
+      if (leadAgora) await alertaMensagem(leadAgora, msg.text.body, "text");
+    }
+    else if (msg.type === "image") {
+      resposta = await processarImagem(uid, msg.image.id);
+    }
+    else if (msg.type === "audio") {
+      resposta = await processarAudio(uid, msg.audio.id);
+    }
+    else if (msg.type === "video") {
+      resposta = await processarVideo(uid, msg.video.id);
+    }
+    else if (msg.type === "document") {
+      resposta = await processarDocumento(uid, msg.document.id, msg.document.filename);
+    }
+    else if (msg.type === "sticker") {
+      resposta = await processarSticker(uid, msg.sticker?.id);
+    }
+    else if (msg.type === "location") {
+      resposta = await processarLocalizacao(uid, msg.location.latitude, msg.location.longitude, msg.location.name);
+    }
+    else if (msg.type === "contacts") {
+      const cName = msg.contacts?.[0]?.name?.formatted_name || "?";
+      resposta = await processarContato(uid, cName);
+    }
+    else if (msg.type === "reaction") {
+      await addLog(uid, "user", "[Reacao: " + (msg.reaction?.emoji || "?") + "]", "whatsapp", { tipo: "reaction", emoji: msg.reaction?.emoji });
+    }
+    else {
+      await addLog(uid, "user", "[Mensagem tipo: " + msg.type + "]", "whatsapp", { tipo: msg.type });
     }
 
     if (resposta) {
       await send(resposta);
-      // Registrar resposta da Ana no log (se nao for texto - texto ja registra no chamarIA)
-      if (msg.type !== "text") {
+      // Registrar resposta da Ana no log (texto e imagem ja registram dentro de suas funcoes)
+      if (msg.type !== "text" && msg.type !== "image") {
         await addLog(uid, "assistant", resposta, "whatsapp");
       }
       agendarRetomada(uid, send);
@@ -663,6 +762,7 @@ app.delete("/leads", async (req, res) => {
     await leadsCol.deleteOne({ userId: uid });
     await logsCol.deleteOne({ userId: uid });
     // Limpar memoria
+    if (timers[uid]) clearTimeout(timers[uid]);
     delete conversas[uid];
     delete timers[uid];
     delete rateLimits[uid];
@@ -765,6 +865,9 @@ input[type=text]:focus{border-color:#c9748a}
 .mr.user .mb{background:#c9748a;color:#fff;border-bottom-right-radius:3px}
 .mr.assistant .mb{background:#fff;color:#1a1218;border-bottom-left-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .media-tag{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;background:rgba(201,116,138,.12);color:#8a3f52;margin-bottom:4px;display:inline-block}
+.media-img{max-width:100%;max-height:200px;border-radius:8px;cursor:pointer;transition:max-height .3s;display:block;margin-bottom:4px}
+.media-img.expanded{max-height:500px}
+.media-audio{width:100%;max-width:250px;height:36px;display:block;margin-bottom:4px}
 .mt{font-size:9px;color:#7a6570;margin:0 3px 1px}.mr.user .mt{text-align:right}
 .al{font-size:9px;color:#c9748a;font-weight:700;margin-bottom:1px;margin-left:2px}
 .emp{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#7a6570;text-align:center;padding:30px}
@@ -836,6 +939,9 @@ input[type=text]:focus{border-color:#c9748a}
 </div>
 <script>
 var lds=[],lmap={},fil="todos",ati=null,PWD="${pwd}",sortMode="recente";
+
+// ---- Escape HTML ----
+function esc(s) { if (!s) return ""; return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 // ---- Formatar telefone BR ----
 function ft(contato) {
@@ -942,10 +1048,10 @@ function rl() {
     var pv = li.ultima ? fh(li.ultima) : "";
     var nome = displayName(ld);
     h += '<div class="ci' + (ati === ld.userId ? " on" : "") + '" data-id="' + ld.userId + '">';
-    h += '<div class="ci-top"><div class="ci-av wa">' + ini(nome) + '</div>';
-    h += '<div class="cn">' + nome + '</div></div>';
-    h += '<div class="cp">' + ft(ld.contato) + '</div>';
-    if (ld.interesse) h += '<div class="ci-int">' + ld.interesse + '</div>';
+    h += '<div class="ci-top"><div class="ci-av wa">' + esc(ini(nome)) + '</div>';
+    h += '<div class="cn">' + esc(nome) + '</div></div>';
+    h += '<div class="cp">' + esc(ft(ld.contato)) + '</div>';
+    if (ld.interesse) h += '<div class="ci-int">' + esc(ld.interesse) + '</div>';
     h += '<div class="cm"><span class="bx b-' + st + '">' + st.replace(/_/g," ") + '</span>';
     h += '<span class="ct">' + (pv ? pv : fh(ld.timestamp)) + '</span></div>';
     h += '</div>';
@@ -985,18 +1091,32 @@ function abrir(uid) {
       for (var i = 0; i < lg.length; i++) {
         var m = lg[i], ia = m.role === "assistant";
         var txt = (m.texto || "").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-        // Renderizar tipo de midia com icone
-        var mediaTag = "";
-        if (m.tipo === "image") mediaTag = '<div class="media-tag">📷 Imagem</div>';
-        else if (m.tipo === "audio") mediaTag = '<div class="media-tag">🎙️ Audio</div>';
-        else if (m.tipo === "video") mediaTag = '<div class="media-tag">🎬 Video</div>';
-        else if (m.tipo === "document") mediaTag = '<div class="media-tag">📄 ' + (m.filename || "Documento") + '</div>';
-        else if (m.tipo === "sticker") mediaTag = '<div class="media-tag">🩷 Sticker</div>';
-        else if (m.tipo === "location") mediaTag = '<div class="media-tag">📍 Localizacao</div>';
-        else if (m.tipo === "contact") mediaTag = '<div class="media-tag">👤 Contato</div>';
-        else if (m.tipo === "reaction") mediaTag = '<div class="media-tag">' + (m.emoji || "❤️") + ' Reacao</div>';
+        var mediaHtml = "";
+        if (m.tipo === "image" && m.mediaData) {
+          mediaHtml = '<img src="' + m.mediaData + '" class="media-img" onclick="this.classList.toggle(\'expanded\')">';
+        } else if (m.tipo === "image") {
+          mediaHtml = '<div class="media-tag">📷 Imagem</div>';
+        } else if (m.tipo === "audio" && m.mediaData) {
+          mediaHtml = '<audio controls class="media-audio"><source src="' + m.mediaData + '"></audio>';
+        } else if (m.tipo === "audio") {
+          mediaHtml = '<div class="media-tag">🎙️ Audio</div>';
+        } else if (m.tipo === "video") {
+          mediaHtml = '<div class="media-tag">🎬 Video</div>';
+        } else if (m.tipo === "document") {
+          mediaHtml = '<div class="media-tag">📄 ' + esc(m.filename || "Documento") + '</div>';
+        } else if (m.tipo === "sticker") {
+          mediaHtml = '<div class="media-tag">🩷 Sticker</div>';
+        } else if (m.tipo === "location") {
+          mediaHtml = '<div class="media-tag">📍 Localizacao</div>';
+        } else if (m.tipo === "contact") {
+          mediaHtml = '<div class="media-tag">👤 Contato</div>';
+        } else if (m.tipo === "reaction") {
+          mediaHtml = '<div class="media-tag">' + (m.emoji || "❤️") + '</div>';
+        }
+        // Se tem midia, mostrar midia + texto; senao so texto
+        var content = mediaHtml + (txt.indexOf("[") === 0 && mediaHtml ? "" : txt);
         h += '<div class="mg">' + (ia ? '<div class="al">Ana</div>' : '') +
-             '<div class="mr ' + m.role + '"><div class="mb">' + mediaTag + txt + '</div></div>' +
+             '<div class="mr ' + m.role + '"><div class="mb">' + content + '</div></div>' +
              '<div class="mt">' + fh(m.timestamp) + '</div></div>';
       }
       ma.innerHTML = h; ma.scrollTop = ma.scrollHeight;
@@ -1012,7 +1132,7 @@ function confirmarApagar() {
   var div = document.createElement("div");
   div.className = "modal-overlay";
   div.id = "modal-del";
-  div.innerHTML = '<div class="modal-box"><h3>Apagar contato?</h3><p>Tem certeza que quer apagar <b>' + nome + '</b> e todo o historico de mensagens? Essa acao nao pode ser desfeita.</p><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal()">Cancelar</button><button class="modal-confirm" onclick="apagarLead()">Apagar</button></div></div>';
+  div.innerHTML = '<div class="modal-box"><h3>Apagar contato?</h3><p>Tem certeza que quer apagar <b>' + esc(nome) + '</b> e todo o historico de mensagens? Essa acao nao pode ser desfeita.</p><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal()">Cancelar</button><button class="modal-confirm" onclick="apagarLead()">Apagar</button></div></div>';
   document.body.appendChild(div);
 }
 function fecharModal() {
@@ -1112,13 +1232,13 @@ app.get("/termos", (req, res) => {
     '<h1>Termos de Servico</h1>',
     '<p class="sub">Escola de Amor-Proprio &mdash; Ultima atualizacao: ' + d + '</p>',
     '<h2>1. Aceitacao dos Termos</h2>',
-    '<p>Ao utilizar o assistente virtual Ana da Escola de Amor-Proprio, voce concorda com estes Termos de Servico.</p>',
+    '<p>Ao utilizar o atendimento automatizado Ana da Escola de Amor-Proprio, voce concorda com estes Termos de Servico.</p>',
     '<h2>2. Sobre o servico</h2>',
-    '<p>O assistente virtual Ana e um chatbot de atendimento disponivel via WhatsApp e Instagram, com o objetivo de fornecer informacoes sobre nossos servicos e facilitar o agendamento.</p>',
+    '<p>Ana e uma atendente digital disponivel via WhatsApp, com o objetivo de fornecer informacoes sobre nossos servicos e facilitar o agendamento.</p>',
     '<h2>3. Uso adequado</h2>',
     '<p>O servico deve ser utilizado apenas para fins legitimos relacionados aos servicos da Escola de Amor-Proprio. E proibido o uso para fins ilicitos ou abusivos.</p>',
     '<h2>4. Limitacao de responsabilidade</h2>',
-    '<p>O assistente virtual fornece informacoes de carater geral. Para decisoes de saude fisica ou mental, recomendamos consultar profissionais habilitados.</p>',
+    '<p>O atendimento fornece informacoes de carater geral. Para decisoes de saude fisica ou mental, recomendamos consultar profissionais habilitados.</p>',
     '<h2>5. Contato</h2>',
     '<p>Escola de Amor-Proprio<br>Tv. Dom Romualdo Coelho, 1072 &mdash; Belem, PA<br>WhatsApp: (91) 98134-7134<br>E-mail: escoladeamorproprio@gmail.com</p>',
     '<footer>Em conformidade com o Codigo de Defesa do Consumidor e a legislacao brasileira vigente.</footer>',
@@ -1154,7 +1274,7 @@ footer{margin-top:48px;font-size:12px;color:#7a6570;border-top:1px solid #f0d5dc
   <h2>1. Quem somos</h2>
   <p>A Escola de Amor-Proprio e um Centro Integral de Cuidado com a Mulher, fundado em Belem-PA pela terapeuta Ludmilla Raissuli.</p>
   <h2>2. Quais dados coletamos</h2>
-  <p>Coletamos apenas as informacoes fornecidas voluntariamente durante a conversa: nome, numero de telefone ou identificador da plataforma, e o conteudo das mensagens trocadas com o assistente virtual Ana.</p>
+  <p>Coletamos apenas as informacoes fornecidas voluntariamente durante a conversa: nome, numero de telefone ou identificador da plataforma, e o conteudo das mensagens trocadas com a atendente Ana.</p>
   <h2>3. Como usamos os dados</h2>
   <p>Os dados sao usados exclusivamente para melhorar o atendimento, responder duvidas sobre nossos servicos e entrar em contato quando solicitado. Nao vendemos nem compartilhamos seus dados com terceiros.</p>
   <h2>4. Armazenamento e seguranca</h2>
