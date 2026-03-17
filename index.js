@@ -425,87 +425,23 @@ app.post("/webhook/whatsapp", async (req, res) => {
   } catch (e) { console.error("WA erro:", e.message); res.sendStatus(500); }
 });
 
-// ============ WEBHOOKS INSTAGRAM (@escoladeamorproprio) ============
+// ============ WEBHOOKS INSTAGRAM — STANDBY (desativado, so verificacao) ============
 app.get("/webhook/instagram", (req, res) => {
-  console.log("IG verificacao:", req.query);
   if (req.query["hub.verify_token"] === VERIFY_TOKEN) res.send(req.query["hub.challenge"]);
   else res.sendStatus(403);
 });
-app.post("/webhook/instagram", async (req, res) => {
-  try {
-    console.log("IG webhook recebido:", JSON.stringify(req.body));
-    const entry = req.body.entry?.[0];
-    let uid, texto;
-    if (entry?.changes) {
-      const change = entry.changes[0];
-      const msg = change?.value?.messages?.[0];
-      if (!msg || msg.type !== "text") return res.sendStatus(200);
-      uid = msg.from;
-      texto = msg.text?.body;
-    } else if (entry?.messaging) {
-      const messaging = entry.messaging[0];
-      if (!messaging?.message?.text) return res.sendStatus(200);
-      uid = messaging.sender.id;
-      texto = messaging.message.text;
-    } else {
-      return res.sendStatus(200);
-    }
-    if (!uid || !texto) return res.sendStatus(200);
-    if (!checarRate(uid)) return res.sendStatus(200);
-    const token = process.env.INSTAGRAM_TOKEN;
-    const send = async (text) => {
-      const r = await fetch("https://graph.facebook.com/v21.0/" + IG_PAGE_ID + "/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-        body: JSON.stringify({ recipient: { id: uid }, message: { text }, messaging_type: "RESPONSE" })
-      });
-      const d = await r.json();
-      console.log("IG send result:", JSON.stringify(d));
-    };
-    await send(await chamarIA(uid, texto, "instagram"));
-    agendarRetomada(uid, send);
-    res.sendStatus(200);
-  } catch (e) { console.error("IG erro:", e.message); res.sendStatus(500); }
+app.post("/webhook/instagram", (req, res) => {
+  // STANDBY — Instagram desativado por enquanto
+  res.sendStatus(200);
 });
 
-// ============ WEBHOOKS INSTAGRAM2 (@ludmillaraissuli) ============
 app.get("/webhook/instagram2", (req, res) => {
   if (req.query["hub.verify_token"] === VERIFY_TOKEN) res.send(req.query["hub.challenge"]);
   else res.sendStatus(403);
 });
-app.post("/webhook/instagram2", async (req, res) => {
-  try {
-    console.log("IG2 webhook recebido:", JSON.stringify(req.body));
-    const entry = req.body.entry?.[0];
-    let uid, texto;
-    if (entry?.changes) {
-      const change = entry.changes[0];
-      const msg = change?.value?.messages?.[0];
-      if (!msg || msg.type !== "text") return res.sendStatus(200);
-      uid = msg.from;
-      texto = msg.text?.body;
-    } else if (entry?.messaging) {
-      const messaging = entry.messaging[0];
-      if (!messaging?.message?.text) return res.sendStatus(200);
-      uid = messaging.sender.id;
-      texto = messaging.message.text;
-    } else {
-      return res.sendStatus(200);
-    }
-    if (!uid || !texto) return res.sendStatus(200);
-    if (!checarRate(uid)) return res.sendStatus(200);
-    const token = process.env.INSTAGRAM_TOKEN_2;
-    const send = async (text) => {
-      await fetch("https://graph.facebook.com/v21.0/" + IG_PAGE_ID + "/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-        body: JSON.stringify({ recipient: { id: uid }, message: { text }, messaging_type: "RESPONSE" })
-      });
-    };
-    await send(await chamarIA(uid, texto, "instagram2"));
-    agendarRetomada(uid, send);
-    res.sendStatus(200);
-  } catch (e) { console.error("IG2 erro:", e.message); res.sendStatus(500); }
+app.post("/webhook/instagram2", (req, res) => {
+  // STANDBY — Instagram2 desativado por enquanto
+  res.sendStatus(200);
 });
 
 // ============ ROTAS ADMIN ============
@@ -513,6 +449,20 @@ app.get("/leads", async (req, res) => {
   if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta" });
   const lista = await getAllLeads();
   res.json({ total: lista.length, leads: lista });
+});
+app.delete("/leads", async (req, res) => {
+  if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta" });
+  const uid = req.query.userId;
+  if (!uid) return res.status(400).json({ erro: "userId obrigatorio" });
+  try {
+    await leadsCol.deleteOne({ userId: uid });
+    await logsCol.deleteOne({ userId: uid });
+    // Limpar memoria
+    delete conversas[uid];
+    delete timers[uid];
+    delete rateLimits[uid];
+    res.json({ ok: true, msg: "Lead e logs apagados" });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 app.get("/logs", async (req, res) => {
   if (req.query.senha !== LEADS_PASSWORD) return res.status(401).json({ erro: "Senha incorreta" });
@@ -564,6 +514,18 @@ input[type=text]:focus{border-color:#c9748a}
 .export-row{display:flex;gap:6px;margin-top:8px}
 .export-btn{padding:4px 10px;border-radius:6px;font-size:10px;cursor:pointer;border:1px solid #f0d5dc;background:#fff;color:#7a6570;transition:all .2s}
 .export-btn:hover{background:#c9748a;color:#fff}
+.sort-select{width:100%;padding:5px 8px;border:1px solid #f0d5dc;border-radius:6px;font-size:10px;color:#7a6570;background:#fff;outline:none;cursor:pointer}
+.sort-select:focus{border-color:#c9748a}
+.del-btn{padding:4px 10px;border-radius:6px;font-size:10px;cursor:pointer;border:1px solid #e57373;background:#fff;color:#e57373;transition:all .2s;margin-left:auto}
+.del-btn:hover{background:#e57373;color:#fff}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-box{background:#fff;border-radius:14px;padding:28px;max-width:360px;width:90%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+.modal-box h3{color:#8a3f52;font-size:15px;margin-bottom:8px}
+.modal-box p{color:#7a6570;font-size:12px;margin-bottom:18px}
+.modal-btns{display:flex;gap:10px;justify-content:center}
+.modal-cancel{padding:8px 20px;border-radius:8px;border:1px solid #f0d5dc;background:#fff;color:#7a6570;font-size:12px;cursor:pointer}
+.modal-confirm{padding:8px 20px;border-radius:8px;border:none;background:#e57373;color:#fff;font-size:12px;cursor:pointer}
+.modal-confirm:hover{background:#c62828}
 .lista{overflow-y:auto;flex:1}
 .ci{padding:12px 14px;border-bottom:1px solid rgba(201,116,138,.08);cursor:pointer;transition:background .15s}
 .ci:hover{background:rgba(240,213,220,.4)}.ci.on{background:rgba(201,116,138,.12);border-left:3px solid #c9748a}
@@ -629,6 +591,14 @@ input[type=text]:focus{border-color:#c9748a}
         <div class="tab" data-f="CURIOSA">Curiosas <span class="cnt" id="cnt-CURIOSA"></span></div>
       </div>
       <div class="export-row">
+        <select id="sortBy" class="sort-select">
+          <option value="recente">Mais recentes</option>
+          <option value="antigo">Mais antigos</option>
+          <option value="ultima_msg">Ultima mensagem</option>
+          <option value="nome">Nome A-Z</option>
+        </select>
+      </div>
+      <div class="export-row">
         <div class="export-btn" onclick="exportCSV()">Exportar CSV</div>
         <div class="export-btn" onclick="exportWA()">Copiar WhatsApps</div>
       </div>
@@ -641,7 +611,10 @@ input[type=text]:focus{border-color:#c9748a}
       <div class="ci2"><div class="cn2" id="nn">-</div><div class="cp2" id="ph">-</div></div>
       <div class="ch-details">
         <div class="tgs"><span class="tg ti" id="it"></span><span class="tg tc" id="ca"></span><span class="bx" id="st2"></span></div>
-        <span class="ch-link" id="wa-link" style="display:none" target="_blank">Abrir WhatsApp</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="ch-link" id="wa-link" style="display:none" target="_blank">Abrir WhatsApp</span>
+          <div class="del-btn" id="del-btn" onclick="confirmarApagar()">Apagar</div>
+        </div>
       </div>
     </div>
     <div id="msgs" class="msgs">
@@ -651,23 +624,16 @@ input[type=text]:focus{border-color:#c9748a}
       Total: <strong id="s1">-</strong> <span class="sb-sep">|</span>
       Prontas: <strong id="s2">-</strong> <span class="sb-sep">|</span>
       Pagas: <strong id="s3">-</strong> <span class="sb-sep">|</span>
-      Hoje: <strong id="s4">-</strong> <span class="sb-sep">|</span>
-      WhatsApp: <strong id="s5">-</strong> <span class="sb-sep">|</span>
-      Instagram: <strong id="s6">-</strong>
+      Hoje: <strong id="s4">-</strong>
     </div>
   </div>
 </div>
 <script>
-var lds=[],lmap={},fil="todos",ati=null,PWD="${pwd}";
+var lds=[],lmap={},fil="todos",ati=null,PWD="${pwd}",sortMode="recente";
 
-// ---- Formatar contato inteligente ----
-function ft(contato, plataforma) {
+// ---- Formatar telefone BR ----
+function ft(contato) {
   if (!contato) return "-";
-  // Se for Instagram, o userId e um numero longo que nao e telefone
-  if (plataforma && (plataforma.indexOf("instagram") >= 0)) {
-    return "ID: " + contato;
-  }
-  // WhatsApp: formatar como telefone BR
   var d = contato.replace(/[^0-9]/g, "");
   if (d.length === 13) return "(" + d.slice(2,4) + ") " + d.slice(4,9) + "-" + d.slice(9);
   if (d.length === 12) return "(" + d.slice(2,4) + ") " + d.slice(4,8) + "-" + d.slice(8);
@@ -676,14 +642,10 @@ function ft(contato, plataforma) {
   return contato;
 }
 
-// ---- Nome de exibicao inteligente ----
+// ---- Nome de exibicao ----
 function displayName(ld) {
   if (ld.nome && ld.nome.trim() && ld.nome.trim().toLowerCase() !== "sem nome") return ld.nome.trim();
-  // Tentar extrair da primeira msg nos logs
-  var li = lmap[ld.userId];
-  if (li && li.primeiraMsg) return li.primeiraMsg;
-  // Se WhatsApp, mostrar telefone formatado
-  if (ld.plataforma === "whatsapp") return ft(ld.contato, ld.plataforma);
+  if (ld.plataforma === "whatsapp" || !ld.plataforma) return ft(ld.contato);
   return "Contato " + (ld.userId || "").slice(-6);
 }
 
@@ -696,47 +658,27 @@ function fh(t) {
 
 function ini(n) { return (n && n.trim()) ? n.trim()[0].toUpperCase() : "?"; }
 
-function platIcon(p) {
-  if (!p) return "wa";
-  if (p === "instagram2") return "ig2";
-  if (p.indexOf("instagram") >= 0) return "ig";
-  return "wa";
-}
-
-function platLabel(p) {
-  if (!p) return "WhatsApp";
-  if (p === "instagram2") return "IG @ludmilla";
-  if (p.indexOf("instagram") >= 0) return "IG @escola";
-  return "WhatsApp";
-}
-
-function waLink(contato, plat) {
-  if (!contato || !plat || plat.indexOf("instagram") >= 0) return null;
+function waLink(contato) {
+  if (!contato) return null;
   var d = contato.replace(/[^0-9]/g, "");
   if (d.length >= 10) return "https://wa.me/" + d;
   return null;
 }
 
-// ---- Stats com contadores por aba ----
+// ---- Stats ----
 function stats() {
   var h = new Date().toDateString();
   var counts = {todos:0, CURIOSA:0, AQUECIDA:0, PRONTA:0, PAGO:0, COMPROVANTE_ENVIADO:0};
-  var nwa=0, nig=0;
   for (var i=0; i<lds.length; i++) {
-    var l = lds[i], s = l.status || "CURIOSA";
+    var s = lds[i].status || "CURIOSA";
     counts.todos++;
     if (counts[s] !== undefined) counts[s]++;
-    if (l.plataforma && l.plataforma.indexOf("instagram") >= 0) nig++; else nwa++;
   }
-  // Pagas = PAGO + COMPROVANTE_ENVIADO
   var totalPagas = counts.PAGO + counts.COMPROVANTE_ENVIADO;
   document.getElementById("s1").textContent = counts.todos;
   document.getElementById("s2").textContent = counts.PRONTA;
   document.getElementById("s3").textContent = totalPagas;
   document.getElementById("s4").textContent = lds.filter(function(l) { return new Date(l.timestamp).toDateString() === h; }).length;
-  document.getElementById("s5").textContent = nwa;
-  document.getElementById("s6").textContent = nig;
-  // Contadores nas abas
   var el;
   el = document.getElementById("cnt-todos"); if(el) el.textContent = counts.todos || "";
   el = document.getElementById("cnt-PRONTA"); if(el) el.textContent = counts.PRONTA || "";
@@ -746,10 +688,31 @@ function stats() {
   el = document.getElementById("cnt-CURIOSA"); if(el) el.textContent = counts.CURIOSA || "";
 }
 
+// ---- Ordenar lista ----
+function sortList(list) {
+  var s = sortMode;
+  list.sort(function(a, b) {
+    if (s === "recente") return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+    if (s === "antigo") return new Date(a.timestamp || 0) - new Date(b.timestamp || 0);
+    if (s === "ultima_msg") {
+      var la = lmap[a.userId], lb = lmap[b.userId];
+      var ta = la && la.ultima ? new Date(la.ultima) : new Date(0);
+      var tb = lb && lb.ultima ? new Date(lb.ultima) : new Date(0);
+      return tb - ta;
+    }
+    if (s === "nome") {
+      var na = displayName(a).toLowerCase(), nb = displayName(b).toLowerCase();
+      return na < nb ? -1 : na > nb ? 1 : 0;
+    }
+    return 0;
+  });
+  return list;
+}
+
 // ---- Renderizar lista ----
 function rl() {
   var b = document.getElementById("bx").value.toLowerCase();
-  var l = lds;
+  var l = lds.slice();
   if (fil === "PAGO") {
     l = l.filter(function(x) { return x.status === "PAGO" || x.status === "COMPROVANTE_ENVIADO"; });
   } else if (fil !== "todos") {
@@ -760,10 +723,11 @@ function rl() {
       return (x.nome || "").toLowerCase().indexOf(b) >= 0 ||
              (x.contato || "").indexOf(b) >= 0 ||
              (x.interesse || "").toLowerCase().indexOf(b) >= 0 ||
-             (x.plataforma || "").toLowerCase().indexOf(b) >= 0 ||
-             (x.userId || "").indexOf(b) >= 0;
+             (x.userId || "").indexOf(b) >= 0 ||
+             ft(x.contato).indexOf(b) >= 0;
     });
   }
+  l = sortList(l);
   var el = document.getElementById("lista");
   if (!l.length) { el.innerHTML = '<div class="nc">Nenhum contato encontrado</div>'; return; }
   var h = "";
@@ -771,13 +735,12 @@ function rl() {
     var ld = l[i], li = lmap[ld.userId] || {}, st = ld.status || "CURIOSA";
     var pv = li.ultima ? fh(li.ultima) : "";
     var nome = displayName(ld);
-    var pc = platIcon(ld.plataforma);
     h += '<div class="ci' + (ati === ld.userId ? " on" : "") + '" data-id="' + ld.userId + '">';
-    h += '<div class="ci-top"><div class="ci-av ' + pc + '">' + ini(nome) + '</div>';
+    h += '<div class="ci-top"><div class="ci-av wa">' + ini(nome) + '</div>';
     h += '<div class="cn">' + nome + '</div></div>';
-    h += '<div class="cp">' + ft(ld.contato, ld.plataforma) + ' &middot; ' + platLabel(ld.plataforma) + '</div>';
+    h += '<div class="cp">' + ft(ld.contato) + '</div>';
     if (ld.interesse) h += '<div class="ci-int">' + ld.interesse + '</div>';
-    h += '<div class="cm"><span class="bx b-' + st + '">' + st.replace("_"," ") + '</span>';
+    h += '<div class="cm"><span class="bx b-' + st + '">' + st.replace(/_/g," ") + '</span>';
     h += '<span class="ct">' + (pv ? pv : fh(ld.timestamp)) + '</span></div>';
     h += '</div>';
   }
@@ -790,20 +753,18 @@ function abrir(uid) {
   ati = uid; rl();
   var ld = lds.find(function(x) { return x.userId === uid; }) || {};
   var nome = displayName(ld);
-  var pc = platIcon(ld.plataforma);
   document.getElementById("ch").style.display = "flex";
   var avEl = document.getElementById("av");
   avEl.textContent = ini(nome);
-  avEl.className = "av " + pc;
+  avEl.className = "av wa";
   document.getElementById("nn").textContent = nome;
-  document.getElementById("ph").textContent = ft(ld.contato, ld.plataforma) + " | " + platLabel(ld.plataforma);
+  document.getElementById("ph").textContent = ft(ld.contato);
   document.getElementById("it").textContent = ld.interesse || "";
   document.getElementById("it").style.display = ld.interesse ? "" : "none";
-  document.getElementById("ca").textContent = platLabel(ld.plataforma);
-  var s = document.getElementById("st2"); s.textContent = (ld.status || "CURIOSA").replace("_"," "); s.className = "bx b-" + (ld.status || "CURIOSA");
-  // Link WhatsApp
+  document.getElementById("ca").textContent = "WhatsApp";
+  var s = document.getElementById("st2"); s.textContent = (ld.status || "CURIOSA").replace(/_/g," "); s.className = "bx b-" + (ld.status || "CURIOSA");
   var wl = document.getElementById("wa-link");
-  var link = waLink(ld.contato, ld.plataforma);
+  var link = waLink(ld.contato);
   if (link) { wl.style.display = ""; wl.onclick = function() { window.open(link, "_blank"); }; }
   else { wl.style.display = "none"; }
 
@@ -827,16 +788,51 @@ function abrir(uid) {
     .catch(function() { ma.innerHTML = '<div class="emp"><div class="ei">❌</div><div class="et">Erro ao carregar</div></div>'; });
 }
 
+// ---- Apagar lead ----
+function confirmarApagar() {
+  if (!ati) return;
+  var ld = lds.find(function(x) { return x.userId === ati; }) || {};
+  var nome = displayName(ld);
+  var div = document.createElement("div");
+  div.className = "modal-overlay";
+  div.id = "modal-del";
+  div.innerHTML = '<div class="modal-box"><h3>Apagar contato?</h3><p>Tem certeza que quer apagar <b>' + nome + '</b> e todo o historico de mensagens? Essa acao nao pode ser desfeita.</p><div class="modal-btns"><button class="modal-cancel" onclick="fecharModal()">Cancelar</button><button class="modal-confirm" onclick="apagarLead()">Apagar</button></div></div>';
+  document.body.appendChild(div);
+}
+function fecharModal() {
+  var m = document.getElementById("modal-del");
+  if (m) m.remove();
+}
+function apagarLead() {
+  if (!ati) return;
+  fecharModal();
+  fetch("/leads?senha=" + PWD + "&userId=" + ati, { method: "DELETE" })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        lds = lds.filter(function(x) { return x.userId !== ati; });
+        delete lmap[ati];
+        ati = null;
+        document.getElementById("ch").style.display = "none";
+        document.getElementById("msgs").innerHTML = '<div class="emp"><div class="ei">🌸</div><div class="et">Contato apagado</div><div class="es">Selecione outro contato ao lado</div></div>';
+        stats(); rl();
+      } else {
+        alert("Erro ao apagar: " + (d.erro || "desconhecido"));
+      }
+    })
+    .catch(function() { alert("Erro de conexao ao apagar"); });
+}
+
 // ---- Export CSV ----
 function exportCSV() {
-  var rows = [["Nome","Contato","Plataforma","Interesse","Status","Data"]];
+  var rows = [["Nome","Telefone","Interesse","Status","Data"]];
   var list = fil === "todos" ? lds : lds.filter(function(x) {
     if (fil === "PAGO") return x.status === "PAGO" || x.status === "COMPROVANTE_ENVIADO";
     return x.status === fil;
   });
   for (var i = 0; i < list.length; i++) {
     var l = list[i];
-    rows.push([displayName(l), l.contato || "", l.plataforma || "", l.interesse || "", l.status || "CURIOSA", l.timestamp || ""]);
+    rows.push([displayName(l), ft(l.contato), l.interesse || "", l.status || "CURIOSA", l.timestamp || ""]);
   }
   var csv = rows.map(function(r) { return r.map(function(c) { return '"' + (c+"").replace(/"/g,'""') + '"'; }).join(","); }).join("\\n");
   var blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
@@ -845,8 +841,8 @@ function exportCSV() {
 
 // ---- Copiar numeros WhatsApp ----
 function exportWA() {
-  var nums = lds.filter(function(l) { return l.plataforma === "whatsapp" && l.contato; }).map(function(l) { return l.contato; });
-  if (!nums.length) { alert("Nenhum contato WhatsApp encontrado"); return; }
+  var nums = lds.filter(function(l) { return l.contato; }).map(function(l) { return l.contato; });
+  if (!nums.length) { alert("Nenhum contato encontrado"); return; }
   var txt = nums.join("\\n");
   navigator.clipboard.writeText(txt).then(function() { alert(nums.length + " numeros copiados!"); }).catch(function() {
     prompt("Copie os numeros:", txt);
@@ -873,6 +869,7 @@ function carregar() {
 
 document.getElementById("bx").addEventListener("input", rl);
 document.getElementById("rb").addEventListener("click", carregar);
+document.getElementById("sortBy").addEventListener("change", function() { sortMode = this.value; rl(); });
 document.querySelectorAll(".tab").forEach(function(t) {
   t.addEventListener("click", function() {
     fil = this.getAttribute("data-f");
