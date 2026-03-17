@@ -244,9 +244,6 @@ COMPORTAMENTO ESPECIAL
    Em que posso te ajudar?"
   E depois responda a pergunta normalmente.
 
-- FORA DO HORARIO (antes 8h ou depois 20h):
-  Informe que o atendimento e das 8h as 20h e que respondera pela manha.
-
 - Se a pessoa so mandar "oi", "ola", "bom dia" etc:
   Cumprimente com carinho e pergunte como pode ajudar, mencionando brevemente os servicos:
   "Oi, tudo bem? 🌸 Aqui e a Ana, da Escola de Amor-Proprio!
@@ -288,13 +285,9 @@ async function chamarIA(uid, msg, plataforma) {
   const hist = getHist(uid);
   hist[hist.length - 1] = { role: "user", content: msgIA };
 
-  // Adicionar contexto de horário
-  const horaAtual = new Date().toLocaleString("pt-BR", { timeZone: "America/Belem" });
-  const horaNum = new Date().toLocaleString("pt-BR", { timeZone: "America/Belem", hour: "2-digit", hour12: false });
-
   let resposta = "Desculpe, tive um probleminha tecnico. Tente novamente em instantes 🌸";
   try {
-    const systemWithTime = PROMPT + "\n\nHORARIO ATUAL EM BELEM: " + horaAtual + " (use para verificar se esta dentro do horario de atendimento 8h-20h)";
+    const systemWithTime = PROMPT;
 
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
