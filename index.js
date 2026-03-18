@@ -155,7 +155,7 @@ async function processarImagem(uid, imageId) {
     else msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente enviou uma foto. Responda normalmente.";
     const hist = getHist(uid);
     hist[hist.length - 1] = { role: "user", content: msgParaIA };
-    const res2 = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2024-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
+    const res2 = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
     if (res2.ok) { const d = await res2.json(); resposta = d.content?.[0]?.text || resposta; }
   } catch (e) { console.error("IA imagem erro:", e.message); }
 
@@ -335,7 +335,7 @@ async function chamarIA(uid, msg, plataforma) {
   hist[hist.length - 1] = { role: "user", content: msgIA };
   let resposta = "Desculpe, tive um probleminha tecnico. Tente novamente em instantes";
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2024-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
+    const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
     if (res.ok) { const d = await res.json(); resposta = d.content?.[0]?.text || resposta; }
     else { console.error("Anthropic erro:", res.status); }
   } catch (e) { console.error("IA erro:", e.message); }
