@@ -14,8 +14,8 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "meu_token_secreto";
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-const LEADS_PASSWORD = process.env.LEADS_PASSWORD || "escola2024";
-const PAINEL_SENHA = process.env.PAINEL_SENHA || "painel2024";
+const LEADS_PASSWORD = process.env.LEADS_PASSWORD || process.env.PAINEL_SENHA || "escola2024";
+const PAINEL_SENHA = process.env.PAINEL_SENHA || process.env.LEADS_PASSWORD || "painel2024";
 const MONGODB_URI = process.env.MONGODB_URI;
 const IG_ACCOUNT_ID = "17841401948747652";
 const IG_PAGE_ID = "223210454453170";
@@ -155,7 +155,7 @@ async function processarImagem(uid, imageId) {
     else msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente enviou uma foto. Responda normalmente.";
     const hist = getHist(uid);
     hist[hist.length - 1] = { role: "user", content: msgParaIA };
-    const res2 = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
+    const res2 = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2024-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
     if (res2.ok) { const d = await res2.json(); resposta = d.content?.[0]?.text || resposta; }
   } catch (e) { console.error("IA imagem erro:", e.message); }
 
@@ -171,7 +171,10 @@ async function processarImagem(uid, imageId) {
     m2[1].split("|").forEach(p => { const [k, v] = p.split("=").map(s => s.trim()); if (k && v) extras[k.toLowerCase()] = v; });
     const statusOrdem = { "CURIOSA": 1, "AQUECIDA": 2, "PRONTA": 3, "PAGO": 4, "COMPROVANTE_ENVIADO": 5 };
     if (extras.status && (statusOrdem[extras.status] || 0) < (statusOrdem[lead.status] || 0)) delete extras.status;
-    await saveLead({ ...lead, ...extras, userId: uid });
+    // Nunca sobrescrever contato com placeholder
+    delete extras.contato;
+    const contatoReal = lead.contato && lead.contato !== "user_id" && lead.contato !== "nao informado" ? lead.contato : uid;
+    await saveLead({ ...lead, ...extras, userId: uid, contato: contatoReal });
     resposta = resposta.replace(m2[0], "").trim();
   }
   await addLog(uid, "assistant", resposta, "whatsapp");
@@ -332,7 +335,7 @@ async function chamarIA(uid, msg, plataforma) {
   hist[hist.length - 1] = { role: "user", content: msgIA };
   let resposta = "Desculpe, tive um probleminha tecnico. Tente novamente em instantes";
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
+    const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2024-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
     if (res.ok) { const d = await res.json(); resposta = d.content?.[0]?.text || resposta; }
     else { console.error("Anthropic erro:", res.status); }
   } catch (e) { console.error("IA erro:", e.message); }
@@ -403,7 +406,11 @@ app.post("/webhook/whatsapp", async (req, res) => {
     if (!checarRate(uid)) return res.sendStatus(200);
     const send = async (text) => { await fetch("https://graph.facebook.com/v18.0/" + phoneId + "/messages", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + process.env.WHATSAPP_TOKEN }, body: JSON.stringify({ messaging_product: "whatsapp", to: uid, text: { body: text } }) }); };
     let resposta = null;
-    if (msg.type === "text") { resposta = await chamarIA(uid, msg.text.body, "whatsapp"); const leadAgora = await getLead(uid); if (leadAgora) await alertaMensagem(leadAgora, msg.text.body, "text"); }
+    if (msg.type === "text") {
+      const leadAntes = await getLead(uid);
+      if (leadAntes) await alertaMensagem(leadAntes, msg.text.body, "text");
+      resposta = await chamarIA(uid, msg.text.body, "whatsapp");
+    }
     else if (msg.type === "image") { resposta = await processarImagem(uid, msg.image.id); }
     else if (msg.type === "audio") { resposta = await processarAudio(uid, msg.audio.id); }
     else if (msg.type === "video") { resposta = await processarVideo(uid, msg.video.id); }
