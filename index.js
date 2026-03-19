@@ -90,25 +90,28 @@ const agora = () => new Date().toLocaleString("pt-BR", { timeZone: "America/Bele
 
 async function alertaNovo(l) {
   const link = waUrl(l.contato);
-  await tg("🌸 *NOVO CONTATO NO WHATSAPP*\n━━━━━━━━━━━━━━━━━━━━━\n👤 *Nome:* " + (l.nome || "_Aguardando..._") + "\n📱 *Telefone:* " + fmtFone(l.contato) + "\n🕐 *Horario:* " + agora() + "\n" + (link ? "💬 [Abrir WhatsApp](" + link + ")\n" : "") + "━━━━━━━━━━━━━━━━━━━━━\n_Ana esta atendendo automaticamente_");
+  await tg("🌸 *Novo contato*\n👤 " + (l.nome || "Aguardando nome") + "\n📱 " + fmtFone(l.contato) + (link ? "\n" + link : ""));
 }
 async function alertaAquecida(l) {
   const link = waUrl(l.contato);
-  await tg("🔥 *LEAD AQUECIDA!*\n━━━━━━━━━━━━━━━━━━━━━\n👤 *Nome:* " + (l.nome || "?") + "\n📱 *Telefone:* " + fmtFone(l.contato) + "\n💜 *Interesse:* " + (l.interesse || "?") + "\n📊 *Status:* AQUECIDA\n🕐 " + agora() + "\n" + (link ? "💬 [Abrir WhatsApp](" + link + ")\n" : "") + "━━━━━━━━━━━━━━━━━━━━━\n_Demonstrou interesse real!_");
+  await tg("🔥 *Lead aquecida!*\n👤 " + (l.nome || "?") + "\n📱 " + fmtFone(l.contato) + "\n💜 " + (l.interesse || "?") + (link ? "\n" + link : ""));
 }
 async function alertaPronta(l) {
   const link = waUrl(l.contato);
-  await tg("🚀 *LEAD PRONTA PRA FECHAR!*\n━━━━━━━━━━━━━━━━━━━━━\n👤 *Nome:* " + (l.nome || "?") + "\n📱 *Telefone:* " + fmtFone(l.contato) + "\n💜 *Interesse:* " + (l.interesse || "?") + "\n📊 *Status:* PRONTA\n🕐 " + agora() + "\n" + (link ? "💬 [Abrir WhatsApp](" + link + ")\n" : "") + "━━━━━━━━━━━━━━━━━━━━━\n_Quer pagar/agendar! Ana enviou PIX._");
+  await tg("🚀 *Pronta pra fechar!*\n👤 " + (l.nome || "?") + "\n📱 " + fmtFone(l.contato) + "\n💜 " + (l.interesse || "?") + (link ? "\n" + link : ""));
 }
 async function alertaPago(l) {
   const link = waUrl(l.contato);
-  await tg("💰 *PAGAMENTO CONFIRMADO!*\n━━━━━━━━━━━━━━━━━━━━━\n👤 *Nome:* " + (l.nome || "?") + "\n📱 *Telefone:* " + fmtFone(l.contato) + "\n💜 *Interesse:* " + (l.interesse || "?") + "\n📊 *Status:* PAGO ✅\n🕐 " + agora() + "\n" + (link ? "💬 [Abrir WhatsApp](" + link + ")\n" : "") + "━━━━━━━━━━━━━━━━━━━━━\n_Vaga confirmada!_");
+  await tg("💰 *Comprovante recebido!*\n👤 " + (l.nome || "?") + "\n📱 " + fmtFone(l.contato) + "\n⚠️ Verifique e confirme a vaga manualmente" + (link ? "\n" + link : ""));
 }
 async function alertaMensagem(l, msgTexto, tipo) {
   const link = waUrl(l.contato);
-  const tipoLabel = tipo === "text" ? "" : " [" + tipo.toUpperCase() + "]";
-  const textoSafe = (msgTexto || "_[" + tipo + "]_").replace(/([*_`\[\]])/g, "\\$1").slice(0, 300);
-  await tg("💬 *MSG RECEBIDA" + tipoLabel + "*\n👤 " + (l.nome || fmtFone(l.contato)) + "\n📱 " + fmtFone(l.contato) + "\n📊 " + (l.status || "CURIOSA") + "\n━━━━━━━━━━━━━━━━━━━━━\n" + textoSafe + "\n━━━━━━━━━━━━━━━━━━━━━\n" + (link ? "💬 [Abrir WhatsApp](" + link + ")" : ""));
+  if (tipo !== "text") {
+    await tg("📎 *" + tipo.toUpperCase() + "*\n👤 " + (l.nome || fmtFone(l.contato)) + "\n📱 " + fmtFone(l.contato) + (link ? "\n" + link : ""));
+    return;
+  }
+  const textoSafe = (msgTexto || "").replace(/([*_`\[\]])/g, "\\$1").slice(0, 200);
+  await tg("💬 " + (l.nome || fmtFone(l.contato)) + ":\n" + textoSafe + (link ? "\n" + link : ""));
 }
 
 async function getMediaUrl(mediaId) {
@@ -147,12 +150,9 @@ async function processarImagem(uid, imageId) {
   } else { await tg(caption + "\n_(imagem nao baixada)_"); }
 
   addMsg(uid, "user", "[Imagem enviada pelo cliente]");
-  let resposta = "Recebi sua imagem! 🤍 Como posso te ajudar?";
+  let resposta = "Recebi sua imagem! Como posso te ajudar?";
   try {
-    let msgParaIA;
-    if (lead.status === "PRONTA") msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente ja estava pronto pra pagar (status PRONTA, interesse: " + (lead.interesse || "?") + "). Enviou uma foto que muito provavelmente e o comprovante de pagamento. Confirme que recebeu o comprovante, confirme a vaga, e inclua [PAGO] no final da resposta.";
-    else if (lead.status === "AQUECIDA") msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente demonstrou interesse (status AQUECIDA, interesse: " + (lead.interesse || "?") + ") e enviou uma foto. Pergunte de forma natural se e o comprovante de pagamento.";
-    else msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente enviou uma foto. Responda normalmente.";
+    const msgParaIA = "[CLIENTE ENVIOU UMA IMAGEM] O cliente enviou uma foto. NAO confirme pagamento automaticamente. Pergunte: 'Esse e o comprovante do pagamento? Me confirma o valor pago.' Somente inclua [PAGO] se a pessoa confirmar verbalmente que e comprovante E informar o valor pago. Status atual: " + (lead.status || "CURIOSA") + ", interesse: " + (lead.interesse || "nenhum") + ".";
     const hist = getHist(uid);
     hist[hist.length - 1] = { role: "user", content: msgParaIA };
     const res2 = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, system: PROMPT, messages: getHist(uid) }) });
@@ -292,10 +292,21 @@ Depois disso:
 3. Aguarda comprovante e confirma vaga
 
 PIX (so danca em grupo):
-*Escola de Amor-Proprio*
-*CNPJ: 21.172.163/0001-21*
-*Valor: R$ 97* (avulsa)
+Quando a pessoa confirmar que quer pagar, mande DUAS mensagens separadas:
+Mensagem 1: "Otimo! Segue o PIX:"
+Mensagem 2 (somente o PIX, nada mais):
+21172163000121
+
+Titular: Escola de Amor-Proprio
+Valor: R$ 97 (avulsa) / R$ 350 (mensal) / R$ 300 (semestral)
 Apos pagar, manda o comprovante aqui.
+
+IMPORTANTE: A chave PIX deve ir sozinha na segunda mensagem para facilitar copiar.
+
+COMPROVANTE — REGRA CRITICA:
+Quando receber uma imagem, NUNCA confirme pagamento automaticamente.
+Responda: "Recebi! Nossa equipe vai verificar e confirmar sua vaga em instantes."
+NAO inclua [PAGO] ao receber imagem. Somente inclua [PAGO] se a pessoa CONFIRMAR VERBALMENTE que pagou E informar o valor pago em texto.
 
 OUTROS SERVICOS:
 Informa valores completos. Quando quiser agendar: "Anoto seu interesse e nossa equipe entra em contato para agendar."
